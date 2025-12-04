@@ -5,7 +5,7 @@ export interface User {
   email?: string;
   preferences: UserPreferences;
   crisis_history: boolean;
-  support_level: 'basic' | 'intermediate' | 'intensive';
+  support_level: "basic" | "intermediate" | "intensive";
 }
 
 export interface UserPreferences {
@@ -35,7 +35,7 @@ export interface ConversationSession {
   created_at: Date;
   updated_at: Date;
   ended_at?: Date;
-  status: 'active' | 'ended' | 'crisis_escalated';
+  status: "active" | "ended" | "crisis_escalated";
   summary?: string;
   total_messages: number;
   average_emotion?: string;
@@ -44,7 +44,7 @@ export interface ConversationSession {
 export interface ConversationMessage {
   id: string;
   session_id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
   emotion_data?: EmotionData;
@@ -62,7 +62,7 @@ export interface EmotionData {
 }
 
 export interface CrisisIndicators {
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   keywords: string[];
   confidence: number;
   action_taken: string;
@@ -75,10 +75,10 @@ export interface CrisisEvent {
   user_id: string;
   session_id: string;
   message_id: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   detected_at: Date;
   resolved_at?: Date;
-  status: 'active' | 'resolved' | 'escalated';
+  status: "active" | "resolved" | "escalated";
   keywords: string[];
   confidence: number;
   response_actions: string[];
@@ -110,6 +110,6 @@ export interface WellnessMetrics {
   average_session_duration: number;
   emotional_improvement_score: number;
   crisis_frequency: number;
-  engagement_level: 'low' | 'medium' | 'high';
+  engagement_level: "low" | "medium" | "high";
   recommendations: string[];
 }

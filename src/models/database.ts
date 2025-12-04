@@ -1,10 +1,10 @@
-import { 
-  User, 
-  ConversationSession, 
-  ConversationMessage, 
-  CrisisEvent, 
-  EmotionTrend 
-} from './types';
+import {
+  User,
+  ConversationSession,
+  ConversationMessage,
+  CrisisEvent,
+  EmotionTrend,
+} from "./types";
 
 // Mock database implementation for development
 // In production, replace with actual database operations
@@ -22,14 +22,14 @@ class MockDatabase {
       created_at: new Date(),
       updated_at: new Date(),
       preferences: {
-        voice_preference: 'AVA-Default',
-        language: 'en-US'
+        voice_preference: "AVA-Default",
+        language: "en-US",
       },
       crisis_history: false,
-      support_level: 'basic',
-      ...userData
+      support_level: "basic",
+      ...userData,
     };
-    
+
     this.users.set(user.id, user);
     return user;
   }
@@ -38,16 +38,19 @@ class MockDatabase {
     return this.users.get(userId) || null;
   }
 
-  async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
+  async updateUser(
+    userId: string,
+    updates: Partial<User>
+  ): Promise<User | null> {
     const user = this.users.get(userId);
     if (!user) return null;
 
     const updatedUser = {
       ...user,
       ...updates,
-      updated_at: new Date()
+      updated_at: new Date(),
     };
-    
+
     this.users.set(userId, updatedUser);
     return updatedUser;
   }
@@ -59,10 +62,10 @@ class MockDatabase {
       user_id: userId,
       created_at: new Date(),
       updated_at: new Date(),
-      status: 'active',
-      total_messages: 0
+      status: "active",
+      total_messages: 0,
     };
-    
+
     this.sessions.set(session.id, session);
     return session;
   }
@@ -77,25 +80,27 @@ class MockDatabase {
 
     const updatedSession = {
       ...session,
-      status: 'ended' as const,
+      status: "ended" as const,
       ended_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
-    
+
     this.sessions.set(sessionId, updatedSession);
     return updatedSession;
   }
 
   // Message operations
-  async addMessage(messageData: Omit<ConversationMessage, 'id' | 'timestamp'>): Promise<ConversationMessage> {
+  async addMessage(
+    messageData: Omit<ConversationMessage, "id" | "timestamp">
+  ): Promise<ConversationMessage> {
     const message: ConversationMessage = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
-      ...messageData
+      ...messageData,
     };
-    
+
     this.messages.set(message.id, message);
-    
+
     // Update session message count
     const session = this.sessions.get(message.session_id);
     if (session) {
@@ -103,36 +108,43 @@ class MockDatabase {
       session.updated_at = new Date();
       this.sessions.set(session.id, session);
     }
-    
+
     return message;
   }
 
-  async getMessagesBySessionId(sessionId: string): Promise<ConversationMessage[]> {
+  async getMessagesBySessionId(
+    sessionId: string
+  ): Promise<ConversationMessage[]> {
     return Array.from(this.messages.values())
-      .filter(msg => msg.session_id === sessionId)
+      .filter((msg) => msg.session_id === sessionId)
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }
 
   // Crisis operations
-  async createCrisisEvent(eventData: Omit<CrisisEvent, 'id' | 'detected_at'>): Promise<CrisisEvent> {
+  async createCrisisEvent(
+    eventData: Omit<CrisisEvent, "id" | "detected_at">
+  ): Promise<CrisisEvent> {
     const crisisEvent: CrisisEvent = {
       id: `crisis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       detected_at: new Date(),
-      ...eventData
+      ...eventData,
     };
-    
+
     this.crisisEvents.set(crisisEvent.id, crisisEvent);
     return crisisEvent;
   }
 
   async getCrisisEventsByUserId(userId: string): Promise<CrisisEvent[]> {
     return Array.from(this.crisisEvents.values())
-      .filter(event => event.user_id === userId)
+      .filter((event) => event.user_id === userId)
       .sort((a, b) => b.detected_at.getTime() - a.detected_at.getTime());
   }
 
   // Analytics operations
-  async getEmotionTrends(userId: string, days: number = 7): Promise<EmotionTrend[]> {
+  async getEmotionTrends(
+    userId: string,
+    days: number = 7
+  ): Promise<EmotionTrend[]> {
     // Mock implementation
     return [];
   }
@@ -141,23 +153,26 @@ class MockDatabase {
   async clearUserData(userId: string): Promise<void> {
     // Remove user and all associated data
     this.users.delete(userId);
-    
-    const userSessions = Array.from(this.sessions.values())
-      .filter(session => session.user_id === userId);
-    
-    userSessions.forEach(session => {
+
+    const userSessions = Array.from(this.sessions.values()).filter(
+      (session) => session.user_id === userId
+    );
+
+    userSessions.forEach((session) => {
       this.sessions.delete(session.id);
-      
-      const sessionMessages = Array.from(this.messages.values())
-        .filter(msg => msg.session_id === session.id);
-      
-      sessionMessages.forEach(msg => this.messages.delete(msg.id));
+
+      const sessionMessages = Array.from(this.messages.values()).filter(
+        (msg) => msg.session_id === session.id
+      );
+
+      sessionMessages.forEach((msg) => this.messages.delete(msg.id));
     });
-    
-    const userCrisisEvents = Array.from(this.crisisEvents.values())
-      .filter(event => event.user_id === userId);
-    
-    userCrisisEvents.forEach(event => this.crisisEvents.delete(event.id));
+
+    const userCrisisEvents = Array.from(this.crisisEvents.values()).filter(
+      (event) => event.user_id === userId
+    );
+
+    userCrisisEvents.forEach((event) => this.crisisEvents.delete(event.id));
   }
 
   async getStats(): Promise<any> {
@@ -166,8 +181,9 @@ class MockDatabase {
       total_sessions: this.sessions.size,
       total_messages: this.messages.size,
       total_crisis_events: this.crisisEvents.size,
-      active_sessions: Array.from(this.sessions.values())
-        .filter(s => s.status === 'active').length
+      active_sessions: Array.from(this.sessions.values()).filter(
+        (s) => s.status === "active"
+      ).length,
     };
   }
 }
