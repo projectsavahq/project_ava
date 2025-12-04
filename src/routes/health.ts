@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { mongoDb } from "../models/mongoDatabase";
 
 const router = Router();
 
@@ -31,14 +32,18 @@ router.get("/detailed", (req: Request, res: Response) => {
   });
 });
 
-// Database health (placeholder)
-router.get("/database", (req: Request, res: Response) => {
-  // TODO: Implement actual database health check
-  res.json({
-    status: "healthy",
-    database: "not_connected",
-    message: "Database health check not implemented yet",
-  });
+// Database health (now with actual MongoDB check)
+router.get("/database", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const healthCheck = await mongoDb.healthCheck();
+    res.json(healthCheck);
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Database health check failed",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 });
 
 export default router;

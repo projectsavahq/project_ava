@@ -6,8 +6,11 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+// Import database
+import { mongoDb } from "./models/mongoDatabase";
+
 // Import routes
-import voiceRoutes from "./routes/voice"
+import voiceRoutes from "./routes/voice";
 import conversationRoutes from "./routes/conversation";
 import crisisRoutes from "./routes/crisis";
 import healthRoutes from "./routes/health";
@@ -65,7 +68,34 @@ app.use("*", (req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-server.listen(PORT, () => {
-  console.log(`🎙️  AVA Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+// Initialize database and start server
+const startServer = async () => {
+  try {
+    // Connect to MongoDB
+    await mongoDb.connect();
+
+    server.listen(PORT, () => {
+      console.log(`🎙️  AVA Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`Database: Connected to MongoDB`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  await mongoDb.disconnect();
+  process.exit(0);
 });
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, shutting down gracefully");
+  await mongoDb.disconnect();
+  process.exit(0);
+});
+
+startServer();
