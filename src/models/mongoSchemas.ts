@@ -29,6 +29,7 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
+    userId: { type: String, required: true, unique: true },
     email: { type: String, unique: true, sparse: true },
     preferences: {
       voicePreference: { type: String, default: "AVA-Default" },

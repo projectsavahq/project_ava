@@ -123,6 +123,16 @@ class MongoDatabase {
       .lean();
   }
 
+  async getSessionsByUserId(
+    userId: string,
+    limit = 10
+  ): Promise<IConversationSession[]> {
+    return await ConversationSession.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+  }
+
   async endSession(
     sessionId: string,
     summary?: string

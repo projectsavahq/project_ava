@@ -14,6 +14,7 @@ import voiceRoutes from "./routes/voice";
 import conversationRoutes from "./routes/conversation";
 import crisisRoutes from "./routes/crisis";
 import healthRoutes from "./routes/health";
+import usersRoutes from "./routes/users";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -45,6 +46,7 @@ app.use("/api/voice", voiceRoutes);
 app.use("/api/conversation", conversationRoutes);
 app.use("/api/crisis", crisisRoutes);
 app.use("/api/health", healthRoutes);
+app.use("/api/users", usersRoutes);
 
 // WebSocket connection for real-time communication
 io.on("connection", (socket) => {
