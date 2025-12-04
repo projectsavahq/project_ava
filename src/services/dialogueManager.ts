@@ -1,6 +1,6 @@
-import { ConversationContext, EmotionResult } from '../types';
-import { EmotionDetectionService } from './emotionDetection';
-import { CrisisDetectionService } from './crisisDetection';
+import { ConversationContext, EmotionResult } from "../types";
+import { EmotionDetectionService } from "./emotionDetection";
+import { CrisisDetectionService } from "./crisisDetection";
 
 export class DialogueManagerService {
   private emotionService: EmotionDetectionService;

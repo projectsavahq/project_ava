@@ -1,4 +1,4 @@
-import { EmotionDetectionService } from "./services/emotionDetection";
+import { EmotionDetectionService } from "../../src/services/emotionDetection";
 
 describe("EmotionDetectionService", () => {
   let emotionService: EmotionDetectionService;

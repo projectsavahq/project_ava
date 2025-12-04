@@ -1,4 +1,4 @@
-import { SpeechToTextResult } from '../types';
+import { SpeechToTextResult } from "../types";
 
 export class SpeechToTextService {
   private apiKey: string;

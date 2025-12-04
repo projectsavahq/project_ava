@@ -1,8 +1,8 @@
-import { Router, Request, Response } from 'express';
-import multer from 'multer';
-import { SpeechToTextService } from '../services/speechToText';
-import { TextToSpeechService } from '../services/textToSpeech';
-import { DialogueManagerService } from '../services/dialogueManager';
+import { Router, Request, Response } from "express";
+import multer from "multer";
+import { SpeechToTextService } from "../services/speechToText";
+import { TextToSpeechService } from "../services/textToSpeech";
+import { DialogueManagerService } from "../services/dialogueManager";
 
 const router = Router();
 const upload = multer({

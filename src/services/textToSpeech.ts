@@ -1,4 +1,4 @@
-import { TextToSpeechOptions } from '../types';
+import { TextToSpeechOptions } from "../types";
 
 export class TextToSpeechService {
   private apiKey: string;
