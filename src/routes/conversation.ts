@@ -1,6 +1,6 @@
-import { Router, Request, Response } from "express";
-import { DialogueManagerService } from "@services/dialogueManager";
-import { EmotionDetectionService } from "@services/emotionDetection";
+import { Router, Request, Response } from 'express';
+import { DialogueManagerService } from '../services/dialogueManager';
+import { EmotionDetectionService } from '../services/emotionDetection';
 
 const router = Router();
 const dialogueService = new DialogueManagerService();

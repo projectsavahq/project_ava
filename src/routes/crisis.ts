@@ -1,5 +1,5 @@
-import { Router, Request, Response } from "express";
-import { CrisisDetectionService } from "@services/crisisDetection";
+import { Router, Request, Response } from 'express';
+import { CrisisDetectionService } from '../services/crisisDetection';
 
 const router = Router();
 const crisisService = new CrisisDetectionService();

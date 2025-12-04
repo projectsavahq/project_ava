@@ -1,4 +1,4 @@
-import { EmotionResult } from "@/types";
+import { EmotionResult } from "../types";
 
 export class EmotionDetectionService {
   private sentimentAnalyzer: any;

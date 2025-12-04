@@ -1,4 +1,4 @@
-import { CrisisDetectionResult } from "@/types";
+import { CrisisDetectionResult } from "../types";
 
 export class CrisisDetectionService {
   private emergencyKeywords: string[] = [
