@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { DialogueManagerService } from "../services/dialogueManager";
 import { EmotionDetectionService } from "../services/emotionDetection";
+import { mongoDb } from "../models/mongoDatabase";
 
 const router = Router();
 const dialogueService = new DialogueManagerService();
@@ -9,26 +10,27 @@ const emotionService = new EmotionDetectionService();
 // Start a new conversation session
 router.post("/start", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { userId } = req.body;
+    const { userId, email } = req.body;
 
     if (!userId) {
       res.status(400).json({ error: "userId is required" });
       return;
     }
 
-    const sessionId = `session_${userId}_${Date.now()}`;
-    const context = {
-      userId,
-      sessionId,
-      conversationHistory: [],
-      currentEmotion: undefined,
-    };
+    // Create or get user
+    let user = await mongoDb.getUserById(userId);
+    if (!user && email) {
+      user = await mongoDb.createUser({ userId, email });
+    }
+
+    // Create new session
+    const session = await mongoDb.createSession(userId);
 
     res.json({
-      sessionId,
+      sessionId: session.sessionId,
       message:
         "Hello! I'm AVA, your AI companion. I'm here to listen and support you. How are you feeling today?",
-      context,
+      user: user ? { id: user.userId, preferences: user.preferences } : null,
     });
   } catch (error) {
     console.error("Error starting conversation:", error);
@@ -72,22 +74,48 @@ router.post("/message", async (req: Request, res: Response): Promise<void> => {
 });
 
 // Get conversation history
-router.get("/history/:sessionId", async (req: Request, res: Response) => {
-  try {
-    const { sessionId } = req.params;
+router.get(
+  "/history/:sessionId",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { sessionId } = req.params;
+      const { limit } = req.query;
 
-    // TODO: Implement database retrieval
-    // For now, return empty history
-    res.json({
-      sessionId,
-      history: [],
-      message: "Conversation history retrieval not implemented yet",
-    });
-  } catch (error) {
-    console.error("Error fetching conversation history:", error);
-    res.status(500).json({ error: "Failed to fetch conversation history" });
+      // Get session details
+      const session = await mongoDb.getSessionById(sessionId);
+      if (!session) {
+        res.status(404).json({ error: "Session not found" });
+        return;
+      }
+
+      // Get messages for this session
+      const messages = await mongoDb.getMessagesBySessionId(
+        sessionId,
+        limit ? parseInt(limit as string) : undefined
+      );
+
+      res.json({
+        session: {
+          sessionId: session.sessionId,
+          userId: session.userId,
+          status: session.status,
+          createdAt: session.createdAt,
+          totalMessages: session.totalMessages,
+        },
+        messages: messages.map((msg) => ({
+          id: msg._id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          emotion: msg.emotionData,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching conversation history:", error);
+      res.status(500).json({ error: "Failed to fetch conversation history" });
+    }
   }
-});
+);
 
 // Analyze emotion from text
 router.post(

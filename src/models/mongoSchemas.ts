@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 
 // User Schema
 export interface IUser extends Document {
-  _id: Types.ObjectId;
+  userId: string; // Use custom string ID
   email?: string;
   createdAt: Date;
   updatedAt: Date;

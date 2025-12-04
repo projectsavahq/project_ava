@@ -63,7 +63,7 @@ class MongoDatabase {
   }
 
   async getUserById(userId: string): Promise<IUser | null> {
-    return await User.findById(userId).lean();
+    return await User.findOne({ userId }).lean();
   }
 
   async getUserByEmail(email: string): Promise<IUser | null> {
@@ -74,16 +74,16 @@ class MongoDatabase {
     userId: string,
     updates: Partial<IUser>
   ): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      userId,
+    return await User.findOneAndUpdate(
+      { userId },
       { ...updates, updatedAt: new Date() },
       { new: true }
     ).lean();
   }
 
   async deactivateUser(userId: string): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      userId,
+    return await User.findOneAndUpdate(
+      { userId },
       { isActive: false, updatedAt: new Date() },
       { new: true }
     ).lean();
@@ -214,10 +214,13 @@ class MongoDatabase {
     const savedEvent = await crisisEvent.save();
 
     // Update user crisis history
-    await User.findByIdAndUpdate(eventData.userId, {
-      crisisHistory: true,
-      updatedAt: new Date(),
-    });
+    await User.findOneAndUpdate(
+      { userId: eventData.userId },
+      {
+        crisisHistory: true,
+        updatedAt: new Date(),
+      }
+    );
 
     return savedEvent;
   }
@@ -362,7 +365,7 @@ class MongoDatabase {
       CrisisEvent.deleteMany({ userId }),
       EmotionTrend.deleteMany({ userId }),
       ConversationSession.deleteMany({ userId }),
-      User.findByIdAndUpdate(userId, { isActive: false }),
+      User.findOneAndUpdate({ userId }, { isActive: false }),
     ]);
   }
 
