@@ -18,17 +18,17 @@ const dialogueService = new DialogueManagerService();
 router.post(
   "/process-audio",
   upload.single("audio"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No audio file provided" });
+        res.status(400).json({ error: "No audio file provided" });
+        return;
       }
 
       const { userId, sessionId } = req.body;
       if (!userId || !sessionId) {
-        return res
-          .status(400)
-          .json({ error: "userId and sessionId are required" });
+        res.status(400).json({ error: "userId and sessionId are required" });
+        return;
       }
 
       // Convert audio to text
@@ -63,38 +63,43 @@ router.post(
 );
 
 // Convert text to speech
-router.post("/text-to-speech", async (req: Request, res: Response) => {
-  try {
-    const { text, voice, speed, pitch } = req.body;
+router.post(
+  "/text-to-speech",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { text, voice, speed, pitch } = req.body;
 
-    if (!text) {
-      return res.status(400).json({ error: "Text is required" });
+      if (!text) {
+        res.status(400).json({ error: "Text is required" });
+        return;
+      }
+
+      const audioBuffer = await ttsService.synthesizeSpeech(text, {
+        voice,
+        speed,
+        pitch,
+      });
+
+      res.json({
+        audio: audioBuffer.toString("base64"),
+        format: "mp3",
+      });
+    } catch (error) {
+      console.error("Error in text-to-speech:", error);
+      res.status(500).json({ error: "Failed to convert text to speech" });
     }
-
-    const audioBuffer = await ttsService.synthesizeSpeech(text, {
-      voice,
-      speed,
-      pitch,
-    });
-
-    res.json({
-      audio: audioBuffer.toString("base64"),
-      format: "mp3",
-    });
-  } catch (error) {
-    console.error("Error in text-to-speech:", error);
-    res.status(500).json({ error: "Failed to convert text to speech" });
   }
-});
+);
 
 // Convert speech to text
 router.post(
   "/speech-to-text",
   upload.single("audio"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No audio file provided" });
+        res.status(400).json({ error: "No audio file provided" });
+        return;
       }
 
       const sttResult = await sttService.processAudio(req.file.buffer);

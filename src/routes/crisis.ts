@@ -5,12 +5,13 @@ const router = Router();
 const crisisService = new CrisisDetectionService();
 
 // Analyze text for crisis indicators
-router.post("/analyze", async (req: Request, res: Response) => {
+router.post("/analyze", async (req: Request, res: Response): Promise<void> => {
   try {
     const { text, userId, context } = req.body;
 
     if (!text) {
-      return res.status(400).json({ error: "text is required" });
+      res.status(400).json({ error: "text is required" });
+      return;
     }
 
     const crisisResult = await crisisService.detectCrisis(text, context);
@@ -39,14 +40,13 @@ router.get("/resources", async (req: Request, res: Response) => {
 });
 
 // Emergency escalation endpoint
-router.post("/escalate", async (req: Request, res: Response) => {
+router.post("/escalate", async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, severity, details } = req.body;
 
     if (!userId || !severity) {
-      return res
-        .status(400)
-        .json({ error: "userId and severity are required" });
+      res.status(400).json({ error: "userId and severity are required" });
+      return;
     }
 
     const crisisResult = {

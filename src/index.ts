@@ -7,14 +7,14 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 // Import routes
-import voiceRoutes from "@routes/voice";
-import conversationRoutes from "@routes/conversation";
-import crisisRoutes from "@routes/crisis";
-import healthRoutes from "@routes/health";
+import voiceRoutes from "./routes/voice"
+import conversationRoutes from "./routes/conversation";
+import crisisRoutes from "./routes/crisis";
+import healthRoutes from "./routes/health";
 
 // Import middleware
-import { errorHandler } from "@middleware/errorHandler";
-import { rateLimiter } from "@middleware/rateLimiter";
+import { errorHandler } from "./middleware/errorHandler";
+import { rateLimiter } from "./middleware/rateLimiter";
 
 dotenv.config();
 
