@@ -20,7 +20,7 @@ import conversationRoutes from "./routes/conversation";
 import crisisRoutes from "./routes/crisis";
 import healthRoutes from "./routes/health";
 import usersRoutes from "./routes/users";
-import { authRoutes } from "./routes/auth";
+import authRoutes from "./routes/auth";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";

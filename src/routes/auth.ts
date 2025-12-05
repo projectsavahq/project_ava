@@ -5,20 +5,20 @@ import { authMiddleware } from '../middleware/authMiddleware';
 const router = Router();
 
 // Public routes (no authentication required)
-router.post('/signup', authController.signup.bind(authController));
-router.post('/verify-email', authController.verifyEmail.bind(authController));
-router.post('/login', authController.login.bind(authController));
-router.post('/refresh-token', authController.refreshToken.bind(authController));
-router.post('/forgot-password', authController.forgotPassword.bind(authController));
-router.post('/reset-password', authController.resetPassword.bind(authController));
-router.post('/logout', authController.logout.bind(authController));
+router.post('/signup', authController.signup);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/login', authController.login);
+router.post('/refresh-token', authController.refreshToken);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+router.post('/logout', authController.logout);
 
 // Protected routes (authentication required)
 router.use(authMiddleware); // Apply auth middleware to all routes below
 
-router.post('/set-password', authController.setPassword.bind(authController));
-router.get('/me', authController.getProfile.bind(authController));
-router.post('/send-otp', authController.sendOTP.bind(authController));
-router.post('/verify-otp', authController.verifyOTP.bind(authController));
+router.post('/set-password', authController.setPassword);
+router.get('/me', authController.getProfile);
+router.post('/send-otp', authController.sendOTP);
+router.post('/verify-otp', authController.verifyOTP);
 
-export { router as authRoutes };
+export default router;
