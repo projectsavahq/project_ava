@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import { dbConnection } from "../models/database";
 import { mongoDb } from "../models/mongoDatabase";
 
 const router = Router();
@@ -35,8 +36,16 @@ router.get("/detailed", (req: Request, res: Response) => {
 // Database health (now with actual MongoDB check)
 router.get("/database", async (req: Request, res: Response): Promise<void> => {
   try {
-    const healthCheck = await mongoDb.healthCheck();
-    res.json(healthCheck);
+    const [connectionHealth, dbHealth] = await Promise.all([
+      dbConnection.healthCheck(),
+      mongoDb.healthCheck()
+    ]);
+
+    res.json({
+      connection: connectionHealth,
+      database: dbHealth,
+      overall_status: connectionHealth.status === "healthy" && dbHealth.status === "healthy" ? "healthy" : "unhealthy"
+    });
   } catch (error) {
     res.status(500).json({
       status: "error",

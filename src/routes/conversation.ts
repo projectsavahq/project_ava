@@ -1,174 +1,22 @@
-import { Router, Request, Response } from "express";
-import { DialogueManagerService } from "../services/dialogueManager";
-import { EmotionDetectionService } from "../services/emotionDetection";
-import { mongoDb } from "../models/mongoDatabase";
+import { Router } from "express";
+import { ConversationController } from "../controllers";
 
 const router = Router();
-const dialogueService = new DialogueManagerService();
-const emotionService = new EmotionDetectionService();
+const conversationController = new ConversationController();
 
 // Start a new conversation session
-router.post("/start", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { userId, email } = req.body;
-
-    if (!userId) {
-      res.status(400).json({ error: "userId is required" });
-      return;
-    }
-
-    // Create or get user
-    let user = await mongoDb.getUserById(userId);
-    if (!user && email) {
-      user = await mongoDb.createUser({ userId, email });
-    }
-
-    // Create new session
-    const session = await mongoDb.createSession(userId);
-
-    res.json({
-      sessionId: session.sessionId,
-      message:
-        "Hello! I'm AVA, your AI companion. I'm here to listen and support you. How are you feeling today?",
-      user: user ? { id: user.userId, preferences: user.preferences } : null,
-    });
-  } catch (error) {
-    console.error("Error starting conversation:", error);
-    res.status(500).json({ error: "Failed to start conversation" });
-  }
-});
+router.post("/start", conversationController.startConversation);
 
 // Process text input
-router.post("/message", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { text, userId, sessionId, context } = req.body;
-
-    if (!text || !userId || !sessionId) {
-      res
-        .status(400)
-        .json({ error: "text, userId, and sessionId are required" });
-      return;
-    }
-
-    const conversationContext = context || {
-      userId,
-      sessionId,
-      conversationHistory: [],
-      currentEmotion: undefined,
-    };
-
-    const { response, updatedContext } = await dialogueService.processUserInput(
-      text,
-      conversationContext
-    );
-
-    res.json({
-      response,
-      context: updatedContext,
-      emotion: updatedContext.currentEmotion,
-    });
-  } catch (error) {
-    console.error("Error processing message:", error);
-    res.status(500).json({ error: "Failed to process message" });
-  }
-});
+router.post("/message", conversationController.processMessage);
 
 // Get conversation history
-router.get(
-  "/history/:sessionId",
-  async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { sessionId } = req.params;
-      const { limit } = req.query;
-
-      // Get session details
-      const session = await mongoDb.getSessionById(sessionId);
-      if (!session) {
-        res.status(404).json({ error: "Session not found" });
-        return;
-      }
-
-      // Get messages for this session
-      const messages = await mongoDb.getMessagesBySessionId(
-        sessionId,
-        limit ? parseInt(limit as string) : undefined
-      );
-
-      res.json({
-        session: {
-          sessionId: session.sessionId,
-          userId: session.userId,
-          status: session.status,
-          createdAt: session.createdAt,
-          totalMessages: session.totalMessages,
-        },
-        messages: messages.map((msg) => ({
-          id: msg._id,
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          emotion: msg.emotionData,
-        })),
-      });
-    } catch (error) {
-      console.error("Error fetching conversation history:", error);
-      res.status(500).json({ error: "Failed to fetch conversation history" });
-    }
-  }
-);
+router.get("/history/:sessionId", conversationController.getConversationHistory);
 
 // Analyze emotion from text
-router.post(
-  "/analyze-emotion",
-  async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { text } = req.body;
-
-      if (!text) {
-        res.status(400).json({ error: "text is required" });
-        return;
-      }
-
-      const emotion = await emotionService.analyzeEmotion(text);
-
-      res.json({ emotion });
-    } catch (error) {
-      console.error("Error analyzing emotion:", error);
-      res.status(500).json({ error: "Failed to analyze emotion" });
-    }
-  }
-);
+router.post("/analyze-emotion", conversationController.analyzeEmotion);
 
 // Get coaching prompt based on current emotion
-router.post(
-  "/coaching-prompt",
-  async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { emotion, context } = req.body;
-
-      if (!emotion) {
-        res.status(400).json({ error: "emotion is required" });
-        return;
-      }
-
-      const conversationContext = context || {
-        userId: "anonymous",
-        sessionId: "temp",
-        conversationHistory: [],
-        currentEmotion: undefined,
-      };
-
-      const prompt = await dialogueService.generateCoachingPrompt(
-        emotion,
-        conversationContext
-      );
-
-      res.json({ prompt });
-    } catch (error) {
-      console.error("Error generating coaching prompt:", error);
-      res.status(500).json({ error: "Failed to generate coaching prompt" });
-    }
-  }
-);
+router.post("/coaching-prompt", conversationController.generateCoachingPrompt);
 
 export default router;

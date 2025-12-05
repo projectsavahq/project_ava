@@ -7,6 +7,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 // Import database
+import { dbConnection } from "./models/database";
 import { mongoDb } from "./models/mongoDatabase";
 
 // Import routes
@@ -74,7 +75,7 @@ app.use("*", (req, res) => {
 const startServer = async () => {
   try {
     // Connect to MongoDB
-    await mongoDb.connect();
+    await dbConnection.connect();
 
     server.listen(PORT, () => {
       console.log(`🎙️  AVA Server running on port ${PORT}`);
@@ -90,13 +91,13 @@ const startServer = async () => {
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received, shutting down gracefully");
-  await mongoDb.disconnect();
+  await dbConnection.disconnect();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   console.log("SIGINT received, shutting down gracefully");
-  await mongoDb.disconnect();
+  await dbConnection.disconnect();
   process.exit(0);
 });
 
