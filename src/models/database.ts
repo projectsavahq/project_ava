@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { logInfo, logError } from "../utils/logger";
 
 /**
  * Database connection utility
@@ -13,7 +14,7 @@ class DatabaseConnection {
   async connect(): Promise<void> {
     try {
       if (this.isConnected) {
-        console.log("📦 Database already connected");
+        logInfo("📦 Database already connected");
         return;
       }
 
@@ -24,9 +25,9 @@ class DatabaseConnection {
 
       await mongoose.connect(mongoUri);
       this.isConnected = true;
-      console.log("✅ Connected to MongoDB successfully");
+      logInfo("✅ Connected to MongoDB successfully");
     } catch (error) {
-      console.error("❌ MongoDB connection error:", error);
+      logError("❌ MongoDB connection error", error);
       throw error;
     }
   }
@@ -37,15 +38,15 @@ class DatabaseConnection {
   async disconnect(): Promise<void> {
     try {
       if (!this.isConnected) {
-        console.log("📦 Database already disconnected");
+        logInfo("📦 Database already disconnected");
         return;
       }
 
       await mongoose.disconnect();
       this.isConnected = false;
-      console.log("🔌 MongoDB disconnected successfully");
+      logInfo("🔌 MongoDB disconnected successfully");
     } catch (error) {
-      console.error("❌ MongoDB disconnection error:", error);
+      logError("❌ MongoDB disconnection error", error);
       throw error;
     }
   }

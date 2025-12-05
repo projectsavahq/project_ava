@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { User, IUser } from '../models/schemas/User';
+import { logAuth, logError, logInfo, logWarn } from '../utils/logger';
 
 export interface SignupData {
   email: string;
@@ -41,10 +42,14 @@ export class AuthService {
    */
   async signup(signupData: SignupData): Promise<{ user: IUser; verificationToken: string }> {
     const { email, name, password } = signupData;
+    
+    logInfo(`AUTH: Starting signup process for ${email}`);
 
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
+      logAuth.signup(email, false);
+      logWarn(`AUTH: Signup failed - user already exists: ${email}`);
       throw new Error('User with this email already exists');
     }
 
@@ -69,6 +74,9 @@ export class AuthService {
     });
 
     await user.save();
+    
+    logAuth.signup(email, true);
+    logInfo(`AUTH: User created successfully: ${email}`);
 
     return { user, verificationToken };
   }
@@ -77,12 +85,16 @@ export class AuthService {
    * Verify email with token
    */
   async verifyEmail(token: string): Promise<IUser> {
+    logInfo(`AUTH: Email verification attempt with token`);
+    
     const user = await User.findOne({
       emailVerificationToken: token,
       emailVerificationExpires: { $gt: new Date() }
     });
 
     if (!user) {
+      logAuth.emailVerification('unknown', false);
+      logWarn(`AUTH: Email verification failed - invalid or expired token`);
       throw new Error('Invalid or expired verification token');
     }
 
@@ -90,6 +102,9 @@ export class AuthService {
     user.emailVerificationToken = undefined;
     user.emailVerificationExpires = undefined;
     await user.save();
+    
+    logAuth.emailVerification(user.email, true);
+    logInfo(`AUTH: Email verified successfully: ${user.email}`);
 
     return user;
   }
@@ -99,30 +114,40 @@ export class AuthService {
    */
   async login(loginData: LoginData): Promise<AuthResponse> {
     const { email, password } = loginData;
+    
+    logInfo(`AUTH: Login attempt for ${email}`);
 
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
+      logAuth.login(email, false, 'User not found');
       throw new Error('Invalid credentials');
     }
 
     // Check if account is locked
     if (user.lockUntil && user.lockUntil > new Date()) {
+      logAuth.login(email, false, 'Account locked');
+      logWarn(`AUTH: Login blocked - account locked: ${email}`);
       throw new Error('Account is temporarily locked due to too many failed login attempts');
     }
 
     // Check if email is verified
     if (!user.emailVerified) {
+      logAuth.login(email, false, 'Email not verified');
+      logWarn(`AUTH: Login blocked - email not verified: ${email}`);
       throw new Error('Please verify your email before logging in');
     }
 
     // Verify password
     if (!user.password) {
+      logAuth.login(email, false, 'No password set');
+      logError(`AUTH: Login failed - no password set for account: ${email}`);
       throw new Error('Password not set for this account');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      logAuth.login(email, false, 'Invalid password');
       // Increment login attempts
       await this.handleFailedLogin(user);
       throw new Error('Invalid credentials');
@@ -138,6 +163,9 @@ export class AuthService {
     // Update last login
     user.lastLogin = new Date();
     await user.save();
+    
+    logAuth.login(email, true);
+    logInfo(`AUTH: Login successful: ${email}`);
 
     // Generate tokens
     const tokens = this.generateTokens(user);
@@ -157,8 +185,11 @@ export class AuthService {
    * Set/Update user password
    */
   async setPassword(userId: string, newPassword: string, currentPassword?: string): Promise<void> {
+    logInfo(`AUTH: Password change attempt for user: ${userId}`);
+    
     const user = await User.findOne({ userId });
     if (!user) {
+      logError(`AUTH: Password change failed - user not found: ${userId}`);
       throw new Error('User not found');
     }
 
@@ -166,6 +197,8 @@ export class AuthService {
     if (user.password && currentPassword) {
       const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
       if (!isCurrentPasswordValid) {
+        logAuth.passwordChange(user.email, false);
+        logWarn(`AUTH: Password change failed - incorrect current password: ${user.email}`);
         throw new Error('Current password is incorrect');
       }
     }
@@ -175,6 +208,8 @@ export class AuthService {
       for (const oldPassword of user.passwordHistory) {
         const isSameAsOldPassword = await bcrypt.compare(newPassword, oldPassword.password);
         if (isSameAsOldPassword) {
+          logAuth.passwordChange(user.email, false);
+          logWarn(`AUTH: Password change failed - reusing recent password: ${user.email}`);
           throw new Error('Cannot reuse recent passwords');
         }
       }
@@ -199,22 +234,34 @@ export class AuthService {
     user.passwordChangedAt = new Date();
 
     await user.save();
+    
+    logAuth.passwordChange(user.email, true);
+    logInfo(`AUTH: Password changed successfully: ${user.email}`);
   }
 
   /**
    * Refresh access token
    */
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
+    logInfo(`AUTH: Token refresh attempt`);
+    
     try {
       const payload = jwt.verify(refreshToken, this.REFRESH_SECRET) as any;
       const user = await User.findOne({ userId: payload.userId });
 
       if (!user || !user.emailVerified) {
+        logAuth.tokenRefresh('unknown', false);
+        logWarn(`AUTH: Token refresh failed - invalid token or unverified user`);
         throw new Error('Invalid refresh token');
       }
+      
+      logAuth.tokenRefresh(user.email, true);
+      logInfo(`AUTH: Token refreshed successfully: ${user.email}`);
 
       return this.generateTokens(user);
     } catch (error) {
+      logAuth.tokenRefresh('unknown', false);
+      logError(`AUTH: Token refresh failed`, error);
       throw new Error('Invalid refresh token');
     }
   }
@@ -223,9 +270,13 @@ export class AuthService {
    * Forgot password - generate reset token
    */
   async forgotPassword(email: string): Promise<string> {
+    logInfo(`AUTH: Password reset request for ${email}`);
+    
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       // Don't reveal if email exists or not
+      logAuth.passwordReset(email, 'REQUEST', false);
+      logWarn(`AUTH: Password reset request for non-existent email: ${email}`);
       throw new Error('If this email exists, a password reset link has been sent');
     }
 
@@ -235,6 +286,9 @@ export class AuthService {
     user.passwordResetToken = resetToken;
     user.passwordResetExpires = resetExpires;
     await user.save();
+    
+    logAuth.passwordReset(email, 'REQUEST', true);
+    logInfo(`AUTH: Password reset token generated for ${email}`);
 
     return resetToken;
   }
@@ -243,12 +297,16 @@ export class AuthService {
    * Reset password with token
    */
   async resetPassword(token: string, newPassword: string): Promise<void> {
+    logInfo(`AUTH: Password reset attempt with token`);
+    
     const user = await User.findOne({
       passwordResetToken: token,
       passwordResetExpires: { $gt: new Date() }
     });
 
     if (!user) {
+      logAuth.passwordReset('unknown', 'RESET', false);
+      logWarn(`AUTH: Password reset failed - invalid or expired token`);
       throw new Error('Invalid or expired reset token');
     }
 
@@ -285,6 +343,9 @@ export class AuthService {
     user.lockUntil = undefined;
 
     await user.save();
+    
+    logAuth.passwordReset(user.email, 'RESET', true);
+    logInfo(`AUTH: Password reset completed successfully: ${user.email}`);
   }
 
   /**
@@ -296,11 +357,13 @@ export class AuthService {
       const user = await User.findOne({ userId: payload.userId });
 
       if (!user || !user.emailVerified) {
+        logWarn(`AUTH: Token validation failed - invalid token or unverified user`);
         throw new Error('Invalid token');
       }
 
       return user;
     } catch (error) {
+      logError(`AUTH: Token validation failed`, error);
       throw new Error('Invalid token');
     }
   }
@@ -332,11 +395,16 @@ export class AuthService {
    * Handle failed login attempts
    */
   private async handleFailedLogin(user: IUser): Promise<void> {
+    const previousAttempts = user.loginAttempts;
     user.loginAttempts += 1;
 
     // Lock account if max attempts reached
     if (user.loginAttempts >= this.MAX_LOGIN_ATTEMPTS) {
       user.lockUntil = new Date(Date.now() + this.LOCK_TIME);
+      logAuth.accountLock(user.email, user.loginAttempts);
+      logWarn(`AUTH: Account locked after ${user.loginAttempts} failed attempts: ${user.email}`);
+    } else {
+      logWarn(`AUTH: Failed login attempt ${user.loginAttempts}/${this.MAX_LOGIN_ATTEMPTS} for ${user.email}`);
     }
 
     await user.save();

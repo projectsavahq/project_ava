@@ -7,6 +7,9 @@ import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+// Import logging
+import { logger, morganStream, logInfo, logError } from "./utils/logger";
+
 // Import database
 import { dbConnection } from "./models/database";
 import { mongoDb } from "./models/mongoDatabase";
@@ -39,7 +42,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(morgan("combined"));
+app.use(morgan("combined", { stream: morganStream }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -55,15 +58,15 @@ app.use("/api/users", usersRoutes);
 
 // WebSocket connection for real-time communication
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
+  logInfo(`Client connected: ${socket.id}`);
 
   socket.on("voice_input", (data) => {
     // Handle real-time voice input
-    console.log("Received voice input from:", socket.id);
+    logInfo(`Received voice input from: ${socket.id}`);
   });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    logInfo(`Client disconnected: ${socket.id}`);
   });
 });
 
@@ -106,3 +109,6 @@ process.on("SIGINT", async () => {
 });
 
 startServer();
+
+// Export app for testing
+export { app };
