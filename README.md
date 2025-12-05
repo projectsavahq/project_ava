@@ -192,32 +192,6 @@ AVA includes sophisticated crisis detection with multiple severity levels:
 4. **Escalation**: Alert systems and emergency contact protocols
 5. **Follow-up**: Continued monitoring and support
 
-## 🔮 Roadmap
-
-### Phase 1 - MVP (Current)
-
-- [x] Core voice processing pipeline
-- [x] Basic emotion detection
-- [x] Crisis detection system
-- [x] RESTful API structure
-- [ ] WebSocket real-time communication
-
-### Phase 2 - Beta (3-6 months)
-
-- [ ] Advanced ML emotion detection
-- [ ] Persistent user sessions
-- [ ] Music/wellness integration
-- [ ] Mobile app integration
-- [ ] Advanced crisis protocols
-
-### Phase 3 - Scale (6-12 months)
-
-- [ ] Real-time voice processing
-- [ ] Multi-language support
-- [ ] Professional dashboard
-- [ ] Analytics and insights
-- [ ] Healthcare integrations
-
 ## 🛠️ Configuration
 
 Key environment variables:
