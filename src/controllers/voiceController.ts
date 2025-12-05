@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { VoiceService } from "../services/voiceService";
+import { VoiceService } from "../services";
 
 export class VoiceController {
   private voiceService: VoiceService;

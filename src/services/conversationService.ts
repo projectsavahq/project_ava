@@ -1,7 +1,6 @@
 import { DialogueManagerService } from "./dialogueManager";
 import { EmotionDetectionService } from "./emotionDetection";
-import { mongoDb } from "../models/mongoDatabase";
-import { IUser, IConversationSession, IMessage } from "../models/mongoSchemas";
+import { User, ConversationSession, Message, IUser, IConversationSession, IMessage } from "../models/schemas";
 
 export interface ConversationStartResponse {
   sessionId: string;
@@ -57,13 +56,34 @@ export class ConversationService {
    */
   async startConversation(userId: string, email?: string): Promise<ConversationStartResponse> {
     // Create or get user
-    let user = await mongoDb.getUserById(userId);
+    let user = await User.findOne({ userId }).lean();
     if (!user && email) {
-      user = await mongoDb.createUser({ userId, email });
+      user = await new User({
+        userId,
+        email,
+        preferences: {
+          voicePreference: "AVA-Default",
+          language: "en-US",
+          notificationSettings: {
+            crisisAlerts: true,
+            dailyCheckins: false,
+            wellnessReminders: true,
+          },
+        },
+        crisisHistory: false,
+        supportLevel: "basic",
+        isActive: true,
+      }).save();
     }
 
     // Create new session
-    const session = await mongoDb.createSession(userId);
+    const session = await new ConversationSession({
+      userId,
+      sessionId: `session_${userId}_${Date.now()}`,
+      status: "active",
+      totalMessages: 0,
+      metadata: {},
+    }).save();
 
     return {
       sessionId: session.sessionId,
@@ -108,13 +128,15 @@ export class ConversationService {
     limit?: number
   ): Promise<ConversationHistoryResponse | null> {
     // Get session details
-    const session = await mongoDb.getSessionById(sessionId);
+    const session = await ConversationSession.findOne({ sessionId }).lean();
     if (!session) {
       return null;
     }
 
     // Get messages for this session
-    const messages = await mongoDb.getMessagesBySessionId(sessionId, limit);
+    const query = Message.find({ sessionId }).sort({ timestamp: 1 });
+    if (limit) query.limit(limit);
+    const messages = await query.lean();
 
     return {
       session: {

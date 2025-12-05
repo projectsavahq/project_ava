@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CrisisService } from "../services/crisisService";
+import { CrisisService } from "../services";
 
 export class CrisisController {
   private crisisService: CrisisService;

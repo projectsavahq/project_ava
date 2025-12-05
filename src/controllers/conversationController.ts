@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ConversationService } from "../services/conversationService";
+import { ConversationService } from "../services";
 
 export class ConversationController {
   private conversationService: ConversationService;
