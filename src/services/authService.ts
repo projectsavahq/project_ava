@@ -411,7 +411,7 @@ export class AuthService {
   }
 
   /**
-   * Send OTP for additional security (placeholder for Clark integration)
+   * Send OTP for additional security
    */
   async sendOTP(userId: string, phone?: string): Promise<{ otpId: string }> {
     const user = await User.findOne({ userId });
@@ -419,31 +419,55 @@ export class AuthService {
       throw new Error('User not found');
     }
 
-    // TODO: Integrate with Clark OTP service
-    // This is a placeholder implementation
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpId = crypto.randomUUID();
-    
-    // In a real implementation, you would:
-    // 1. Generate OTP code
-    // 2. Send via Clark service
-    // 3. Store OTP details with expiration
-    
-    console.log(`OTP service integration needed for user: ${userId}`);
-    
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store OTP details in user
+    user.otpId = otpId;
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // TODO: Integrate with Clark OTP service to send via SMS
+    // For now, log the code (in production, send via SMS)
+    console.log(`OTP for user ${userId}: ${otpCode} (expires at ${otpExpires})`);
+
     return { otpId };
   }
 
   /**
-   * Verify OTP (placeholder for Clark integration)
+   * Verify OTP
    */
   async verifyOTP(otpId: string, code: string): Promise<boolean> {
-    // TODO: Integrate with Clark OTP service
-    // This is a placeholder implementation
-    
-    console.log(`OTP verification needed for otpId: ${otpId}, code: ${code}`);
-    
-    // In a real implementation, you would verify with Clark service
-    return true; // Placeholder
+    const user = await User.findOne({ otpId });
+    if (!user || !user.otpCode || !user.otpExpires) {
+      return false;
+    }
+
+    // Check if expired
+    if (user.otpExpires < new Date()) {
+      // Clear expired OTP
+      user.otpId = undefined;
+      user.otpCode = undefined;
+      user.otpExpires = undefined;
+      await user.save();
+      return false;
+    }
+
+    // Check code
+    if (user.otpCode !== code) {
+      return false;
+    }
+
+    // Clear OTP on successful verification
+    user.otpId = undefined;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    return true;
   }
 }
 

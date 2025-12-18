@@ -10,6 +10,9 @@ import { Server } from "socket.io";
 // Import logging
 import { logger, morganStream, logInfo, logError } from "./utils/logger";
 
+// Import swagger
+import { specs, swaggerUi } from "./config/swagger";
+
 // Import database
 import { dbConnection } from "./models/database";
 import { mongoDb } from "./models/mongoDatabase";
@@ -48,6 +51,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(rateLimiter);
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AVA Authentication API Documentation"
+}));
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/voice", voiceRoutes);
@@ -85,25 +95,26 @@ const startServer = async () => {
     await dbConnection.connect();
 
     server.listen(PORT, () => {
-      console.log(`🎙️  AVA Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`Database: Connected to MongoDB`);
+      logInfo(`🎙️  AVA Server running on port ${PORT}`);
+      logInfo(`Environment: ${process.env.NODE_ENV || "development"}`);
+      logInfo(`Database: Connected to MongoDB`);
+      logInfo(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logError("Failed to start server", error);
     process.exit(1);
   }
 };
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, shutting down gracefully");
+  logInfo("SIGTERM received, shutting down gracefully");
   await dbConnection.disconnect();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
-  console.log("SIGINT received, shutting down gracefully");
+  logInfo("SIGINT received, shutting down gracefully");
   await dbConnection.disconnect();
   process.exit(0);
 });
