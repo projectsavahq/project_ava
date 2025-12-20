@@ -23,6 +23,7 @@ export interface IAdmin extends Document {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isLocked?: boolean;
 }
 
 const AdminSchema = new Schema<IAdmin>(

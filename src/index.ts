@@ -24,6 +24,7 @@ import crisisRoutes from "./routes/crisis";
 import healthRoutes from "./routes/health";
 import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
+import adminRoutes from "./routes/admin";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -61,6 +62,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/conversation", conversationRoutes);
 app.use("/api/crisis", crisisRoutes);

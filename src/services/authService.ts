@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { User, IUser } from '../models/schemas/User';
+import { Admin, IAdmin } from '../models/schemas/Admin';
 import { logAuth, logError, logInfo, logWarn } from '../utils/logger';
 
 export interface SignupData {
@@ -468,6 +469,155 @@ export class AuthService {
     await user.save();
 
     return true;
+  }
+
+  /**
+   * Admin signup
+   */
+  async adminSignup(signupData: {
+    email: string;
+    name: string;
+    countryCode: string;
+    phoneNumber: string;
+    password: string;
+  }): Promise<{ admin: IAdmin; verificationToken: string }> {
+    const { email, name, countryCode, phoneNumber, password } = signupData;
+    
+    logInfo(`AUTH: Starting admin signup process for ${email}`);
+
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ email: email.toLowerCase() });
+    if (existingAdmin) {
+      logAuth.signup(email, false);
+      logWarn(`AUTH: Admin signup failed - admin already exists: ${email}`);
+      throw new Error('Admin with this email already exists');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
+
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create admin
+    const admin = new Admin({
+      adminId: crypto.randomUUID(),
+      email: email.toLowerCase(),
+      name,
+      countryCode,
+      phoneNumber,
+      password: hashedPassword,
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+      loginAttempts: 0,
+      passwordHistory: []
+    });
+
+    await admin.save();
+    
+    logAuth.signup(email, true);
+    logInfo(`AUTH: Admin created successfully: ${email}`);
+
+    return { admin, verificationToken };
+  }
+
+  /**
+   * Admin login
+   */
+  async adminLogin(loginData: LoginData): Promise<AuthResponse> {
+    const { email, password } = loginData;
+    
+    logInfo(`AUTH: Admin login attempt for ${email}`);
+
+    // Find admin
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    if (!admin) {
+      logAuth.login(email, false, 'Admin not found');
+      throw new Error('Invalid email or password');
+    }
+
+    // Check if admin is locked
+    if (admin.isLocked) {
+      logAuth.securityEvent(email, 'Login attempt while locked');
+      throw new Error('Admin account is locked. Please try again later.');
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, admin.password);
+    if (!isPasswordValid) {
+      admin.loginAttempts = (admin.loginAttempts || 0) + 1;
+      
+      if (admin.loginAttempts >= this.MAX_LOGIN_ATTEMPTS) {
+        admin.lockUntil = new Date(Date.now() + this.LOCK_TIME);
+        logAuth.accountLock(email, admin.loginAttempts);
+      }
+      
+      await admin.save();
+      logAuth.login(email, false, 'Invalid password');
+      throw new Error('Invalid email or password');
+    }
+
+    // Reset login attempts on successful login
+    admin.loginAttempts = 0;
+    admin.lockUntil = undefined;
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { adminId: admin.adminId, email: admin.email, role: 'admin' },
+      this.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { adminId: admin.adminId, email: admin.email, role: 'admin' },
+      this.REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    logAuth.login(email, true);
+
+    return {
+      user: {
+        id: admin.adminId,
+        email: admin.email,
+        name: admin.name,
+        emailVerified: admin.emailVerified
+      },
+      tokens: { accessToken, refreshToken }
+    };
+  }
+
+  /**
+   * Verify admin email with token
+   */
+  async adminVerifyEmail(token: string): Promise<IAdmin> {
+    logInfo(`AUTH: Admin email verification attempt with token`);
+    
+    const admin = await Admin.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: new Date() }
+    });
+
+    if (!admin) {
+      logAuth.emailVerification('unknown', false);
+      logWarn(`AUTH: Admin email verification failed - invalid or expired token`);
+      throw new Error('Invalid or expired verification token');
+    }
+
+    // Clear verification token and mark as verified
+    admin.emailVerified = true;
+    admin.emailVerificationToken = undefined;
+    admin.emailVerificationExpires = undefined;
+    await admin.save();
+
+    logAuth.emailVerification(admin.email, true);
+    logInfo(`AUTH: Admin email verified successfully: ${admin.email}`);
+
+    return admin;
   }
 }
 
