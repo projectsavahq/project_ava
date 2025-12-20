@@ -31,6 +31,14 @@ import { rateLimiter } from "./middleware/rateLimiter";
 
 dotenv.config();
 
+// Quick startup debug logs
+console.log('--- index.ts start ---');
+console.log('NODE_ENV=', process.env.NODE_ENV);
+
+// Ensure the process doesn't exit immediately during debugging
+// (remove this once root cause is identified)
+process.stdin.resume();
+
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -91,14 +99,28 @@ app.use("*", (req, res) => {
 // Initialize database and start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await dbConnection.connect();
+    // Try to connect to MongoDB, but don't block if it fails
+    try {
+      await dbConnection.connect();
+    } catch (dbError) {
+      logError("⚠️  Could not connect to MongoDB on startup", dbError);
+      logInfo("⚠️  Continuing without database connection. Some features may not work.");
+    }
 
-    server.listen(PORT, () => {
-      logInfo(`🎙️  AVA Server running on port ${PORT}`);
-      logInfo(`Environment: ${process.env.NODE_ENV || "development"}`);
-      logInfo(`Database: Connected to MongoDB`);
-      logInfo(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+    // Promisify server.listen to keep the process alive
+    return new Promise<void>((resolve, reject) => {
+      server.listen(PORT, () => {
+        logInfo(`🎙️  AVA Server running on port ${PORT}`);
+        logInfo(`Environment: ${process.env.NODE_ENV || "development"}`);
+        logInfo(`Database: ${dbConnection.connectionStatus ? "Connected" : "Not Connected"}`);
+        logInfo(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+        resolve();
+      });
+
+      server.on('error', (error) => {
+        logError("Server error", error);
+        reject(error);
+      });
     });
   } catch (error) {
     logError("Failed to start server", error);
@@ -106,7 +128,10 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
+startServer().catch((error) => {
+  logError("Fatal error in server startup", error);
+  process.exit(1);
+});
 process.on("SIGTERM", async () => {
   logInfo("SIGTERM received, shutting down gracefully");
   await dbConnection.disconnect();
@@ -118,8 +143,6 @@ process.on("SIGINT", async () => {
   await dbConnection.disconnect();
   process.exit(0);
 });
-
-startServer();
 
 // Export app for testing
 export { app };

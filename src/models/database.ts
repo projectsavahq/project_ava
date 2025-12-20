@@ -23,7 +23,18 @@ class DatabaseConnection {
         throw new Error("MONGODB_URI environment variable is not set");
       }
 
-      await mongoose.connect(mongoUri);
+      // Set connection timeout
+      await Promise.race([
+        mongoose.connect(mongoUri, {
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 45000,
+          connectTimeoutMS: 10000,
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("MongoDB connection timeout after 15 seconds")), 15000)
+        )
+      ]);
+      
       this.isConnected = true;
       logInfo("✅ Connected to MongoDB successfully");
     } catch (error) {
