@@ -4,8 +4,6 @@ export interface IAdmin extends Document {
   adminId: string;
   email: string;
   name: string;
-  countryCode: string;
-  phoneNumber: string;
   password: string;
   passwordChangedAt?: Date;
   emailVerified: boolean;
@@ -31,8 +29,6 @@ const AdminSchema = new Schema<IAdmin>(
     adminId: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    countryCode: { type: String, required: true },
-    phoneNumber: { type: String, required: true },
     password: { type: String, required: true },
     passwordChangedAt: { type: Date },
     emailVerified: { type: Boolean, default: false },

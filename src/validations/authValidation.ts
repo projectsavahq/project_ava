@@ -131,12 +131,6 @@ export const adminValidationSchemas = {
     name: nameSchema.required().messages({
       'any.required': 'Name is required',
     }),
-    countryCode: countryCodeSchema.required().messages({
-      'any.required': 'Country code is required',
-    }),
-    phoneNumber: phoneSchema.required().messages({
-      'any.required': 'Phone number is required',
-    }),
     password: passwordSchema.required().messages({
       'any.required': 'Password is required',
     }),

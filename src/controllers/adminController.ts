@@ -8,13 +8,13 @@ export class AdminController {
    */
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { email, name, countryCode, phoneNumber, password } = req.body;
+      const { email, name, password } = req.body;
 
       // Validate required fields
-      if (!email || !name || !countryCode || !phoneNumber || !password) {
+      if (!email || !name || !password) {
         res.status(400).json({
           success: false,
-          message: 'Email, name, country code, phone number, and password are required'
+          message: 'Email, name, and password are required'
         });
         return;
       }
@@ -38,20 +38,9 @@ export class AdminController {
         return;
       }
 
-      // Country code validation
-      if (countryCode.length !== 2 || !/^[A-Z]{2}$/.test(countryCode)) {
-        res.status(400).json({
-          success: false,
-          message: 'Country code must be exactly 2 uppercase letters'
-        });
-        return;
-      }
-
       const { admin, verificationToken } = await authService.adminSignup({
         email,
         name,
-        countryCode,
-        phoneNumber,
         password
       });
 

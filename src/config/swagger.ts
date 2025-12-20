@@ -192,6 +192,66 @@ const options = {
             }
           }
         },
+        AdminSignupRequest: {
+          type: 'object',
+          required: ['email', 'name', 'password'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Admin email address'
+            },
+            name: {
+              type: 'string',
+              minLength: 2,
+              maxLength: 100,
+              description: 'Admin full name'
+            },
+            password: {
+              type: 'string',
+              minLength: 8,
+              description: 'Admin password (minimum 8 characters, must include uppercase, lowercase, and digit)'
+            }
+          }
+        },
+        AdminLoginRequest: {
+          type: 'object',
+          required: ['email', 'password'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Admin email address'
+            },
+            password: {
+              type: 'string',
+              description: 'Admin password'
+            }
+          }
+        },
+        Admin: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique admin identifier'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Admin email address'
+            },
+            name: {
+              type: 'string',
+              description: 'Admin full name'
+            },
+            emailVerified: {
+              type: 'boolean',
+              description: 'Whether email has been verified'
+            }
+          }
+        },
         SuccessResponse: {
           type: 'object',
           properties: {
@@ -228,10 +288,14 @@ const options = {
       {
         name: 'Authentication',
         description: 'User authentication and account management'
+      },
+      {
+        name: 'Admin',
+        description: 'Admin authentication and management'
       }
     ]
   },
-  apis: ['./src/routes/auth.ts'], // Path to the API docs
+  apis: ['./src/routes/auth.ts', './src/routes/admin.ts'], // Path to the API docs
 };
 
 const specs = swaggerJsdoc(options);

@@ -477,11 +477,9 @@ export class AuthService {
   async adminSignup(signupData: {
     email: string;
     name: string;
-    countryCode: string;
-    phoneNumber: string;
     password: string;
   }): Promise<{ admin: IAdmin; verificationToken: string }> {
-    const { email, name, countryCode, phoneNumber, password } = signupData;
+    const { email, name, password } = signupData;
     
     logInfo(`AUTH: Starting admin signup process for ${email}`);
 
@@ -505,8 +503,6 @@ export class AuthService {
       adminId: crypto.randomUUID(),
       email: email.toLowerCase(),
       name,
-      countryCode,
-      phoneNumber,
       password: hashedPassword,
       emailVerified: false,
       emailVerificationToken: verificationToken,
