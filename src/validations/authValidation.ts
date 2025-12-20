@@ -122,7 +122,7 @@ export const authValidationSchemas = {
     }),
     code: otpCodeSchema,
   }),
-});
+};
 
 // Admin validation schemas
 export const adminValidationSchemas = {
