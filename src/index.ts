@@ -31,13 +31,6 @@ import { rateLimiter } from "./middleware/rateLimiter";
 
 dotenv.config();
 
-// Quick startup debug logs
-console.log('--- index.ts start ---');
-console.log('NODE_ENV=', process.env.NODE_ENV);
-
-// Ensure the process doesn't exit immediately during debugging
-// (remove this once root cause is identified)
-process.stdin.resume();
 
 const app = express();
 const server = createServer(app);
