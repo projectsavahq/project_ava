@@ -42,6 +42,15 @@ export interface IUser extends Document {
   crisisHistory: boolean;
   supportLevel: "basic" | "intermediate" | "intensive";
   isActive: boolean;
+  isSuspended: boolean;
+  suspensionReason?: string;
+  suspendedAt?: Date;
+  adminNotes: Array<{
+    note: string;
+    adminId: string;
+    adminEmail: string;
+    createdAt: Date;
+  }>;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -93,6 +102,17 @@ const UserSchema = new Schema<IUser>(
       default: "basic",
     },
     isActive: { type: Boolean, default: true },
+    isSuspended: { type: Boolean, default: false },
+    suspensionReason: { type: String },
+    suspendedAt: { type: Date },
+    adminNotes: [
+      {
+        note: { type: String, required: true },
+        adminId: { type: String, required: true },
+        adminEmail: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

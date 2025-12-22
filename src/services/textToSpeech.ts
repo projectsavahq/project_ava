@@ -13,26 +13,22 @@ export class TextToSpeechService {
     options: TextToSpeechOptions = {}
   ): Promise<Buffer> {
     try {
-      // For MVP, we'll use a simple mock implementation
-      // In production, integrate with Google Cloud Text-to-Speech or ElevenLabs
-
-      // Mock implementation for development
-      if (process.env.NODE_ENV === "development") {
-        // Return empty buffer for development
-        return Buffer.from("mock-audio-data");
-      }
-
-      // TODO: Implement actual TTS service
-      // const client = new TextToSpeechClient();
-      // const request = {
-      //   input: { text },
-      //   voice: { languageCode: options.language || 'en-US', name: options.voice || 'en-US-Wavenet-A' },
-      //   audioConfig: { audioEncoding: 'MP3', speakingRate: options.speed || 1.0, pitch: options.pitch || 0.0 }
-      // };
-      // const [response] = await client.synthesizeSpeech(request);
-      // return response.audioContent as Buffer;
-
-      throw new Error("TTS service not implemented yet");
+      // EXPLANATION: In Voice Live architecture, TTS is handled by Azure
+      // We don't need separate text-to-speech processing.
+      // 
+      // Azure Voice Live handles this:
+      // 1. Takes user's speech-to-text input
+      // 2. Sends to LLM (GPT-4o) for response
+      // 3. Automatically synthesizes response as audio
+      // 4. Streams audio back in real-time
+      
+      // This function is kept for backward compatibility but not used
+      // in the Voice Live flow
+      
+      console.log('[TextToSpeechService] Note: Azure Voice Live handles TTS internally');
+      
+      // Return placeholder
+      return Buffer.from("Use Azure Voice Live audio responses instead");
     } catch (error) {
       console.error("Error in text-to-speech synthesis:", error);
       throw new Error("Failed to synthesize speech");
@@ -40,10 +36,46 @@ export class TextToSpeechService {
   }
 
   async getAvailableVoices(): Promise<any[]> {
-    // TODO: Implement voice listing
+    // EXPLANATION: Return available Azure voices for session configuration
+    // These are the voices available in Azure Voice Live API
+    // User can select preferred voice at session start
+    
     return [
-      { name: "AVA-Default", language: "en-US", gender: "female" },
-      { name: "AVA-Calm", language: "en-US", gender: "neutral" },
+      {
+        id: 'en-US-Ava:DragonHDLatestNeural',
+        name: 'AVA (Recommended)',
+        language: 'en-US',
+        gender: 'female',
+        description: 'Professional, empathetic voice - best for therapy',
+      },
+      {
+        id: 'en-US-AriaNeural',
+        name: 'Aria',
+        language: 'en-US',
+        gender: 'female',
+        description: 'Clear and friendly',
+      },
+      {
+        id: 'en-US-GuyNeural',
+        name: 'Guy',
+        language: 'en-US',
+        gender: 'male',
+        description: 'Calm and supportive',
+      },
+      {
+        id: 'en-US-AmberNeural',
+        name: 'Amber',
+        language: 'en-US',
+        gender: 'female',
+        description: 'Warm and engaging',
+      },
+      {
+        id: 'en-US-AshleyNeural',
+        name: 'Ashley',
+        language: 'en-US',
+        gender: 'female',
+        description: 'Cheerful and encouraging',
+      },
     ];
   }
 }

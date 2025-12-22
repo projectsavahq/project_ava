@@ -217,4 +217,335 @@ router.post(
   (req, res) => adminController.logout(req, res)
 );
 
+/**
+ * @swagger
+ * /api/admin/users:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Get all users (paginated)
+ *     description: Retrieve a paginated list of all users with optional search and filtering. Requires admin authentication.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 100
+ *         description: Number of users per page (max 100)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by email or name
+ *       - in: query
+ *         name: suspended
+ *         schema:
+ *           type: boolean
+ *         description: Filter by suspension status (true/false)
+ *     responses:
+ *       200:
+ *         description: Users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Users retrieved successfully"
+ *               data:
+ *                 users:
+ *                   - userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                     email: "user@example.com"
+ *                     name: "John Doe"
+ *                     emailVerified: true
+ *                     isSuspended: false
+ *                     supportLevel: "basic"
+ *                     createdAt: "2025-12-20T10:00:00Z"
+ *                 total: 150
+ *                 page: 1
+ *                 limit: 10
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/users',
+  adminAuthMiddleware,
+  (req, res) => adminController.getUsers(req, res)
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Get user details
+ *     description: Retrieve detailed information about a specific user including admin notes. Requires admin authentication.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "User retrieved successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 emailVerified: true
+ *                 isSuspended: false
+ *                 supportLevel: "intermediate"
+ *                 adminNotes:
+ *                   - note: "User reported crisis event on 2025-12-20"
+ *                     adminId: "admin-123"
+ *                     adminEmail: "admin@ava.com"
+ *                     createdAt: "2025-12-20T10:30:00Z"
+ *                 createdAt: "2025-12-15T08:00:00Z"
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get(
+  '/users/:userId',
+  adminAuthMiddleware,
+  (req, res) => adminController.getUserById(req, res)
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/notes:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Add admin note to user
+ *     description: Add a note to a user's record. Notes are tracked with admin ID and timestamp. Requires admin authentication.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ['note']
+ *             properties:
+ *               note:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 description: Admin note (max 1000 characters)
+ *           example:
+ *             note: "User completed crisis support session. Showing improvement."
+ *     responses:
+ *       200:
+ *         description: Admin note added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Admin note added successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 noteAdded:
+ *                   note: "User completed crisis support session."
+ *                   adminId: "admin-123"
+ *                   adminEmail: "admin@ava.com"
+ *                   createdAt: "2025-12-20T12:00:00Z"
+ *                 totalNotes: 5
+ *       400:
+ *         description: Bad request - validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/users/:userId/notes',
+  adminAuthMiddleware,
+  (req, res) => adminController.addAdminNote(req, res)
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/suspend:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Suspend user account
+ *     description: Suspend a user account with a reason. Suspended users cannot log in or access the platform. Requires admin authentication.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: ['reason']
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for suspension
+ *           example:
+ *             reason: "Violation of terms of service - inappropriate content"
+ *     responses:
+ *       200:
+ *         description: User suspended successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "User suspended successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 isSuspended: true
+ *                 suspensionReason: "Violation of terms of service - inappropriate content"
+ *                 suspendedAt: "2025-12-20T12:30:00Z"
+ *       400:
+ *         description: Bad request - validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: User is already suspended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/users/:userId/suspend',
+  adminAuthMiddleware,
+  (req, res) => adminController.suspendUser(req, res)
+);
+
+/**
+ * @swagger
+ * /api/admin/users/{userId}/unsuspend:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Unsuspend user account
+ *     description: Unsuspend a previously suspended user account. The user can then log in normally. Requires admin authentication.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User unsuspended successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "User unsuspended successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 isSuspended: false
+ *                 isActive: true
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: User is not suspended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  '/users/:userId/unsuspend',
+  adminAuthMiddleware,
+  (req, res) => adminController.unsuspendUser(req, res)
+);
+
 export default router;

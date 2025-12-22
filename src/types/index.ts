@@ -44,4 +44,5 @@ export interface CrisisDetectionResult {
   keywords: string[];
   confidence: number;
   recommendedAction: string;
+  reasoning?: string;
 }
