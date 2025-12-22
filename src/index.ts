@@ -11,7 +11,7 @@ import { Server } from "socket.io";
 import { logger, morganStream, logInfo, logError } from "./utils/logger";
 
 // Import swagger
-import { specs, swaggerUi } from "./config/swagger";
+import { specs, getSwaggerSpecs, swaggerUi } from "./config/swagger";
 
 // Import database
 import { dbConnection } from "./models/database";
@@ -72,12 +72,6 @@ app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
   // For deployed environments, ensure we use the correct protocol and host
   const serverUrl = `${protocol}://${host}`;
   
-  // Update the specs with the current server URL
-  specs.servers = [{
-    url: serverUrl,
-    description: 'Current server'
-  }];
-  
   // Set CORS headers for Swagger UI
   res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || "http://localhost:3000");
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -85,18 +79,28 @@ app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   next();
-}, swaggerUi.serve, swaggerUi.setup(specs, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "AVA Authentication API Documentation",
-  swaggerOptions: {
-    docExpansion: 'none',
-    filter: true,
-    showRequestDuration: true,
-    // Force Swagger UI to use the correct server URL
-    servers: specs.servers
-  }
-}));
+}, swaggerUi.serve, (req: Request, res: Response, next: NextFunction) => {
+  // Dynamically set the server URL based on the incoming request
+  const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'https';
+  const host = req.get('X-Forwarded-Host') || req.get('Host') || `localhost:${PORT}`;
+  const serverUrl = `${protocol}://${host}`;
+  
+  // Get dynamic specs with correct server URL
+  const dynamicSpecs = getSwaggerSpecs(serverUrl);
+  
+  // Setup Swagger UI with dynamic specs
+  swaggerUi.setup(dynamicSpecs, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: "AVA Authentication API Documentation",
+    swaggerOptions: {
+      docExpansion: 'none',
+      filter: true,
+      showRequestDuration: true,
+      servers: dynamicSpecs.servers
+    }
+  })(req, res, next);
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
