@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -30,6 +30,9 @@ import adminRoutes from "./routes/admin";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimiter";
 
+// Import Voice Live Gateway for WebSocket voice communication
+import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
+
 dotenv.config();
 
 
@@ -54,7 +57,19 @@ app.use(cookieParser());
 app.use(rateLimiter);
 
 // Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
+  // Dynamically set the server URL based on the incoming request
+  const protocol = req.protocol || (req.get('X-Forwarded-Proto') || 'http');
+  const host = req.get('Host') || `localhost:${PORT}`;
+  
+  // Update the specs with the current server URL
+  specs.servers = [{
+    url: `${protocol}://${host}`,
+    description: 'Current server'
+  }];
+  
+  next();
+}, swaggerUi.serve, swaggerUi.setup(specs, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "AVA Authentication API Documentation"
@@ -70,16 +85,53 @@ app.use("/api/health", healthRoutes);
 app.use("/api/users", usersRoutes);
 
 // WebSocket connection for real-time communication
-io.on("connection", (socket) => {
-  logInfo(`Client connected: ${socket.id}`);
+// EXPLANATION: Initialize Voice Live Gateway for voice conversations
+const voiceLiveGateway = new VoiceLiveGateway();
+// Initialize gateway with the main io server
+voiceLiveGateway.afterInit(io);
 
-  socket.on("voice_input", (data) => {
-    // Handle real-time voice input
-    logInfo(`Received voice input from: ${socket.id}`);
+// Create a dedicated namespace for voice at '/voice' and forward events to the gateway
+const voiceNamespace = io.of('/voice');
+
+voiceNamespace.on('connection', (socket) => {
+  logInfo(`[Voice Namespace] Client connected: ${socket.id}`);
+
+  // Forward lifecycle event to gateway
+  try {
+    // Call the gateway's connection handler (non-decorator usage)
+    (voiceLiveGateway as any).handleConnection?.(socket);
+  } catch (e) {
+    logError('[Voice Namespace] Error in handleConnection', e);
+  }
+
+  // Wire voice-related events to the gateway methods
+  socket.on('voice:connect', (payload: any) => {
+    (voiceLiveGateway as any).handleVoiceConnect?.(socket, payload);
   });
 
-  socket.on("disconnect", () => {
-    logInfo(`Client disconnected: ${socket.id}`);
+  socket.on('voice:audio', (payload: any) => {
+    (voiceLiveGateway as any).handleAudioChunk?.(socket, payload);
+  });
+
+  socket.on('voice:text-input', (payload: any) => {
+    (voiceLiveGateway as any).handleTextInput?.(socket, payload);
+  });
+
+  socket.on('voice:disconnect', (payload: any) => {
+    (voiceLiveGateway as any).handleVoiceDisconnect?.(socket, payload);
+  });
+
+  socket.on('voice:heartbeat', (payload: any) => {
+    (voiceLiveGateway as any).handleHeartbeat?.(socket, payload);
+  });
+
+  socket.on('disconnect', (reason: any) => {
+    logInfo(`[Voice Namespace] Client disconnected: ${socket.id} (${reason})`);
+    try {
+      (voiceLiveGateway as any).handleDisconnect?.(socket);
+    } catch (e) {
+      logError('[Voice Namespace] Error in handleDisconnect', e);
+    }
   });
 });
 

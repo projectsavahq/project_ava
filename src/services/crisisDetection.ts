@@ -145,17 +145,92 @@ export class CrisisDetectionService {
     userId: string,
     crisisResult: CrisisDetectionResult
   ): Promise<void> {
-    // TODO: Implement crisis escalation
-    // - Log crisis event
-    // - Alert monitoring system
-    // - Prepare emergency resources
-    // - Potentially notify emergency contacts (with proper consent)
+    // EXPLANATION: Implement crisis escalation
+    // Based on Python script's crisis handling
+    // Steps:
+    // 1. Log crisis event for audit trail
+    // 2. Alert monitoring system/dashboard
+    // 3. Prepare emergency resources to show user
+    // 4. Optionally notify emergency contacts (with consent)
+    // 5. Update user record with crisis status
 
-    console.log(`Crisis detected for user ${userId}:`, crisisResult);
+    console.log(`[CrisisDetection] Crisis detected for user ${userId}:`, crisisResult);
 
-    if (crisisResult.severity === "critical") {
-      // In production, this would trigger immediate response protocols
-      console.log("CRITICAL CRISIS ALERT - Immediate intervention required");
+    // Log crisis event with timestamp and severity
+    const crisisEvent = {
+      userId,
+      severity: crisisResult.severity,
+      keywords: crisisResult.keywords,
+      confidence: crisisResult.confidence,
+      timestamp: new Date(),
+      context: crisisResult.reasoning,
+    };
+
+    // TODO: Store in CrisisEvent collection in MongoDB
+    // await CrisisEvent.create(crisisEvent);
+
+    // Alert based on severity
+    if (crisisResult.severity === 'critical') {
+      console.log('[CrisisDetection] ⚠️  CRITICAL CRISIS ALERT - Immediate intervention required');
+      // TODO: Send real-time alert to crisis management dashboard
+      // TODO: Trigger SMS notification to on-call counselor
+      // TODO: Prepare for immediate escalation
+    } else if (crisisResult.severity === 'high') {
+      console.log('[CrisisDetection] ⚠️  HIGH severity crisis detected');
+      // TODO: Alert crisis team via dashboard
+      // TODO: Prepare resources for quick response
+    } else if (crisisResult.severity === 'medium') {
+      console.log('[CrisisDetection] ℹ️  Medium severity crisis detected - monitoring');
+      // TODO: Log for monitoring but don't interrupt conversation
+    }
+
+    // Prepare emergency resources message for user
+    // EXPLANATION: Show appropriate resources based on severity
+    // Similar to how Python script shows crisis resources
+    const resourceMessages = {
+      critical: `🚨 CRISIS SUPPORT AVAILABLE IMMEDIATELY 🚨
+      
+National Suicide Prevention Lifeline: 988 (available 24/7)
+Crisis Text Line: Text HOME to 741741
+International Association for Suicide Prevention: https://www.iasp.info/resources/Crisis_Centres/
+
+Emergency: Call 911 or your local emergency number
+
+You are not alone. Help is available right now.`,
+
+      high: `⚠️  CRISIS SUPPORT RESOURCES ⚠️
+
+National Suicide Prevention Lifeline: 988
+Crisis Text Line: Text HOME to 741741
+SAMHSA National Helpline: 1-800-662-4357 (free, confidential, 24/7)
+
+A counselor can speak with you immediately.`,
+
+      medium: `We care about your wellbeing.
+
+Consider reaching out to:
+• A trusted friend or family member
+• A mental health professional
+• Crisis Text Line: Text HOME to 741741
+• Your therapist or counselor
+
+You deserve support.`,
+    };
+
+    const messageLevel = crisisResult.severity as keyof typeof resourceMessages;
+    const message = resourceMessages[messageLevel] || resourceMessages.medium;
+
+    // TODO: Emit crisis alert to client with resources
+    // await this.emitCrisisAlertToClient(userId, crisisResult, message);
+
+    // Update user record if crisis escalates
+    if (crisisResult.severity === 'critical' || crisisResult.severity === 'high') {
+      // TODO: Update User collection with crisis status
+      // await User.findByIdAndUpdate(userId, {
+      //   crisisStatus: crisisResult.severity,
+      //   lastCrisisDetection: new Date(),
+      //   needsIntervention: true,
+      // });
     }
   }
 }

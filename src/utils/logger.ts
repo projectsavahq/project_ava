@@ -97,8 +97,12 @@ export const logWarn = (message: string) => {
   logger.warn(message);
 };
 
-export const logInfo = (message: string) => {
-  logger.info(message);
+export const logInfo = (message: string, meta?: any) => {
+  if (meta) {
+    logger.info(message, meta);
+  } else {
+    logger.info(message);
+  }
 };
 
 export const logDebug = (message: string) => {

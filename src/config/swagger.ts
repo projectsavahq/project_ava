@@ -19,12 +19,17 @@ const options = {
     },
     servers: [
       {
-        url: process.env.API_BASE_URL || 'http://localhost:3001',
-        description: 'Development server'
-      },
-      {
-        url: 'https://api.ava-app.com',
-        description: 'Production server'
+        url: '{protocol}://{host}',
+        description: 'Current server',
+        variables: {
+          protocol: {
+            default: 'http',
+            enum: ['http', 'https']
+          },
+          host: {
+            default: 'localhost:3001'
+          }
+        }
       }
     ],
     components: {
@@ -298,6 +303,6 @@ const options = {
   apis: ['./src/routes/auth.ts', './src/routes/admin.ts'], // Path to the API docs
 };
 
-const specs = swaggerJsdoc(options);
+const specs = swaggerJsdoc(options) as any;
 
 export { specs, swaggerUi };

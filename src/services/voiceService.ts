@@ -2,28 +2,6 @@ import { SpeechToTextService } from "./speechToText";
 import { TextToSpeechService } from "./textToSpeech";
 import { DialogueManagerService } from "./dialogueManager";
 
-export interface AudioProcessingResponse {
-  userText: string;
-  response: string;
-  emotion: any;
-  audioResponse: string;
-  sessionId: string;
-}
-
-export interface TextToSpeechResponse {
-  audio: string;
-  format: string;
-}
-
-export interface SpeechToTextResponse {
-  text: string;
-  confidence?: number;
-}
-
-export interface VoicesResponse {
-  voices: any[];
-}
-
 export class VoiceService {
   private sttService: SpeechToTextService;
   private ttsService: TextToSpeechService;
@@ -35,31 +13,20 @@ export class VoiceService {
     this.dialogueService = new DialogueManagerService();
   }
 
-  /**
-   * Process audio input and return text + AI response
-   */
-  async processAudio(
-    audioBuffer: Buffer,
-    userId: string,
-    sessionId: string
-  ): Promise<AudioProcessingResponse> {
-    // Convert audio to text
+  async processAudio(audioBuffer: Buffer, userId: string, sessionId: string) {
     const sttResult = await this.sttService.processAudio(audioBuffer);
-
-    // Process through dialogue manager
     const context = {
       userId,
       sessionId,
-      conversationHistory: [], // In production, load from database
+      conversationHistory: [],
       currentEmotion: undefined,
-    };
+    } as any;
 
     const { response, updatedContext } = await this.dialogueService.processUserInput(
       sttResult.text,
       context
     );
 
-    // Convert response to audio
     const audioResponseBuffer = await this.ttsService.synthesizeSpeech(response);
 
     return {
@@ -71,38 +38,23 @@ export class VoiceService {
     };
   }
 
-  /**
-   * Convert text to speech
-   */
-  async convertTextToSpeech(
-    text: string,
-    options?: {
-      voice?: string;
-      speed?: number;
-      pitch?: number;
-    }
-  ): Promise<TextToSpeechResponse> {
+  async convertTextToSpeech(text: string, options?: any) {
     const audioBuffer = await this.ttsService.synthesizeSpeech(text, options);
-
     return {
       audio: audioBuffer.toString("base64"),
       format: "mp3",
     };
   }
 
-  /**
-   * Convert speech to text
-   */
-  async convertSpeechToText(audioBuffer: Buffer): Promise<SpeechToTextResponse> {
+  async convertSpeechToText(audioBuffer: Buffer) {
     const sttResult = await this.sttService.processAudio(audioBuffer);
     return sttResult;
   }
 
-  /**
-   * Get available voices
-   */
-  async getAvailableVoices(): Promise<VoicesResponse> {
+  async getAvailableVoices() {
     const voices = await this.ttsService.getAvailableVoices();
     return { voices };
   }
 }
+
+export const voiceService = new VoiceService();

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/authService';
+import { adminUserService } from '../services/adminUserService';
 
 export class AdminController {
   /**
@@ -181,6 +182,275 @@ export class AdminController {
         success: false,
         message: 'Logout failed'
       });
+    }
+  }
+
+  /**
+   * GET /api/admin/users
+   * Get all users with pagination and filtering
+   */
+  async getUsers(req: Request, res: Response): Promise<void> {
+    try {
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const search = req.query.search as string | undefined;
+      const filterSuspended = req.query.suspended ? req.query.suspended === 'true' : undefined;
+
+      // Validate pagination
+      if (page < 1 || limit < 1 || limit > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid pagination parameters'
+        });
+        return;
+      }
+
+      const result = await adminUserService.getUsers({
+        page,
+        limit,
+        search,
+        filterSuspended
+      });
+
+      res.json({
+        success: true,
+        message: 'Users retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to fetch users'
+      });
+    }
+  }
+
+  /**
+   * GET /api/admin/users/:userId
+   * Get a specific user by ID
+   */
+  async getUserById(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          message: 'User ID is required'
+        });
+        return;
+      }
+
+      const user = await adminUserService.getUserById(userId);
+
+      res.json({
+        success: true,
+        message: 'User retrieved successfully',
+        data: user
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch user';
+      
+      if (message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message
+        });
+      }
+    }
+  }
+
+  /**
+   * POST /api/admin/users/:userId/notes
+   * Add admin note to user
+   */
+  async addAdminNote(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const { note } = req.body;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          message: 'User ID is required'
+        });
+        return;
+      }
+
+      if (!note) {
+        res.status(400).json({
+          success: false,
+          message: 'Note is required'
+        });
+        return;
+      }
+
+      if (!req.admin) {
+        res.status(401).json({
+          success: false,
+          message: 'Admin authentication required'
+        });
+        return;
+      }
+
+      const user = await adminUserService.addAdminNote({
+        userId,
+        note,
+        adminId: req.admin.adminId,
+        adminEmail: req.admin.email
+      });
+
+      res.json({
+        success: true,
+        message: 'Admin note added successfully',
+        data: {
+          userId: user.userId,
+          noteAdded: user.adminNotes[user.adminNotes.length - 1],
+          totalNotes: user.adminNotes.length
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add note';
+      
+      if (message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message
+        });
+      } else if (message.includes('cannot') || message.includes('exceed')) {
+        res.status(400).json({
+          success: false,
+          message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message
+        });
+      }
+    }
+  }
+
+  /**
+   * POST /api/admin/users/:userId/suspend
+   * Suspend user account
+   */
+  async suspendUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const { reason } = req.body;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          message: 'User ID is required'
+        });
+        return;
+      }
+
+      if (!reason) {
+        res.status(400).json({
+          success: false,
+          message: 'Suspension reason is required'
+        });
+        return;
+      }
+
+      const user = await adminUserService.suspendUser({
+        userId,
+        reason
+      });
+
+      res.json({
+        success: true,
+        message: 'User suspended successfully',
+        data: {
+          userId: user.userId,
+          email: user.email,
+          isSuspended: user.isSuspended,
+          suspensionReason: user.suspensionReason,
+          suspendedAt: user.suspendedAt
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to suspend user';
+      
+      if (message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message
+        });
+      } else if (message.includes('already suspended')) {
+        res.status(409).json({
+          success: false,
+          message
+        });
+      } else if (message.includes('required')) {
+        res.status(400).json({
+          success: false,
+          message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message
+        });
+      }
+    }
+  }
+
+  /**
+   * POST /api/admin/users/:userId/unsuspend
+   * Unsuspend user account
+   */
+  async unsuspendUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          message: 'User ID is required'
+        });
+        return;
+      }
+
+      const user = await adminUserService.unsuspendUser(userId);
+
+      res.json({
+        success: true,
+        message: 'User unsuspended successfully',
+        data: {
+          userId: user.userId,
+          email: user.email,
+          isSuspended: user.isSuspended,
+          isActive: user.isActive
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to unsuspend user';
+      
+      if (message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message
+        });
+      } else if (message.includes('not suspended')) {
+        res.status(409).json({
+          success: false,
+          message
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message
+        });
+      }
     }
   }
 }
