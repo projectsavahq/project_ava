@@ -301,8 +301,18 @@ const options = {
     ]
   },
   apis: ['./src/routes/auth.ts', './src/routes/admin.ts'], // Path to the API docs
-};
-
-const specs = swaggerJsdoc(options) as any;
-
-export { specs, swaggerUi };
+  };
+  
+  const specs = swaggerJsdoc(options) as any;
+  
+  // Function to get specs with dynamic server URL
+  export const getSwaggerSpecs = (serverUrl: string) => {
+    const dynamicSpecs = { ...specs };
+    dynamicSpecs.servers = [{
+      url: serverUrl,
+      description: 'Current server'
+    }];
+    return dynamicSpecs;
+  };
+  
+  export { specs, swaggerUi };
