@@ -41,7 +41,8 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST","PUT","PATCH"],
+    credentials: true
   },
 });
 
@@ -49,7 +50,12 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+}));
 app.use(morgan("combined", { stream: morganStream }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -59,20 +65,37 @@ app.use(rateLimiter);
 // Swagger Documentation
 app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
   // Dynamically set the server URL based on the incoming request
-  const protocol = req.protocol || (req.get('X-Forwarded-Proto') || 'http');
-  const host = req.get('Host') || `localhost:${PORT}`;
+  // Check for forwarded headers first (for deployed environments behind proxies)
+  const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'https';
+  const host = req.get('X-Forwarded-Host') || req.get('Host') || `localhost:${PORT}`;
+  
+  // For deployed environments, ensure we use the correct protocol and host
+  const serverUrl = `${protocol}://${host}`;
   
   // Update the specs with the current server URL
   specs.servers = [{
-    url: `${protocol}://${host}`,
+    url: serverUrl,
     description: 'Current server'
   }];
+  
+  // Set CORS headers for Swagger UI
+  res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || "http://localhost:3000");
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   next();
 }, swaggerUi.serve, swaggerUi.setup(specs, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "AVA Authentication API Documentation"
+  customSiteTitle: "AVA Authentication API Documentation",
+  swaggerOptions: {
+    docExpansion: 'none',
+    filter: true,
+    showRequestDuration: true,
+    // Force Swagger UI to use the correct server URL
+    servers: specs.servers
+  }
 }));
 
 // Routes
