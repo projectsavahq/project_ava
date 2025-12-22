@@ -23,7 +23,7 @@ const options = {
         description: 'Current server',
         variables: {
           protocol: {
-            default: 'http',
+            default: 'https',
             enum: ['http', 'https']
           },
           host: {
