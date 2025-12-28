@@ -363,6 +363,18 @@ export class VoiceLiveService extends EventEmitter {
           });
           break;
 
+        case 'response.content_part.done':
+          logInfo(`[VoiceLiveService] Response content part completed`);
+          break;
+
+        case 'response.output_item.done':
+          logInfo(`[VoiceLiveService] Response output item completed`);
+          break;
+
+        case 'response.done':
+          logInfo(`[VoiceLiveService] Response completed`);
+          break;
+
         case 'error':
           logError(`[VoiceLiveService] Azure error: ${message.error?.message}`, message);
           this.emit('error', new Error(message.error?.message || 'Azure API error'));
