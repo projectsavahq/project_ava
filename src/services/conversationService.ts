@@ -1,5 +1,4 @@
-import { DialogueManagerService } from "./dialogueManager";
-import { EmotionDetectionService } from "./emotionDetection";
+
 import { User, ConversationSession, Message, IUser, IConversationSession, IMessage } from "../models/schemas";
 
 export interface ConversationStartResponse {
@@ -43,12 +42,9 @@ export interface CoachingPromptResponse {
 }
 
 export class ConversationService {
-  private dialogueService: DialogueManagerService;
-  private emotionService: EmotionDetectionService;
+ 
 
   constructor() {
-    this.dialogueService = new DialogueManagerService();
-    this.emotionService = new EmotionDetectionService();
   }
 
   /**
@@ -95,30 +91,30 @@ export class ConversationService {
   /**
    * Process a message from the user
    */
-  async processMessage(
-    text: string,
-    userId: string,
-    sessionId: string,
-    context?: any
-  ): Promise<MessageResponse> {
-    const conversationContext = context || {
-      userId,
-      sessionId,
-      conversationHistory: [],
-      currentEmotion: undefined,
-    };
+//   async processMessage(
+//     text: string,
+//     userId: string,
+//     sessionId: string,
+//     context?: any
+//   ): Promise<MessageResponse> {
+//     const conversationContext = context || {
+//       userId,
+//       sessionId,
+//       conversationHistory: [],
+//       currentEmotion: undefined,
+//     };
 
-    const { response, updatedContext } = await this.dialogueService.processUserInput(
-      text,
-      conversationContext
-    );
+//     // const { response, updatedContext } = await this.dialogueService.processUserInput(
+//     //   text,
+//     //   conversationContext
+//     // );
 
-    return {
-      response,
-      context: updatedContext,
-      emotion: updatedContext.currentEmotion,
-    };
-  }
+//     return {
+//       response,
+//       context: updatedContext,
+//       emotion: updatedContext.currentEmotion,
+//     };
+//   }
 
   /**
    * Get conversation history for a session
@@ -159,30 +155,30 @@ export class ConversationService {
   /**
    * Analyze emotion from text
    */
-  async analyzeEmotion(text: string): Promise<EmotionAnalysisResponse> {
-    const emotion = await this.emotionService.analyzeEmotion(text);
-    return { emotion };
-  }
+//   async analyzeEmotion(text: string): Promise<EmotionAnalysisResponse> {
+//     const emotion = await this.emotionService.analyzeEmotion(text);
+//     return { emotion };
+//   }
 
   /**
    * Generate coaching prompt based on emotion
    */
-  async generateCoachingPrompt(
-    emotion: any,
-    context?: any
-  ): Promise<CoachingPromptResponse> {
-    const conversationContext = context || {
-      userId: "anonymous",
-      sessionId: "temp",
-      conversationHistory: [],
-      currentEmotion: undefined,
-    };
+//   async generateCoachingPrompt(
+//     emotion: any,
+//     context?: any
+//   ): Promise<CoachingPromptResponse> {
+//     const conversationContext = context || {
+//       userId: "anonymous",
+//       sessionId: "temp",
+//       conversationHistory: [],
+//       currentEmotion: undefined,
+//     };
 
-    const prompt = await this.dialogueService.generateCoachingPrompt(
-      emotion,
-      conversationContext
-    );
+//     const prompt = await this.dialogueService.generateCoachingPrompt(
+//       emotion,
+//       conversationContext
+//     );
 
-    return { prompt };
-  }
+//     return { prompt };
+//   }
 }

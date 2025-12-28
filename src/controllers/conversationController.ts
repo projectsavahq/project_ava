@@ -40,12 +40,14 @@ export class ConversationController {
         return;
       }
 
-      const result = await this.conversationService.processMessage(
-        text,
-        userId,
-        sessionId,
-        context
-      );
+    //   const result = await this.conversationService.processMessage(
+    //     text,
+    //     userId,
+    //     sessionId,
+    //     context
+    //   );
+
+    const result = "string"
 
       res.json(result);
     } catch (error) {
@@ -91,7 +93,7 @@ export class ConversationController {
         return;
       }
 
-      const result = await this.conversationService.analyzeEmotion(text);
+      const result ="string"
       res.json(result);
     } catch (error) {
       console.error("Error analyzing emotion:", error);
@@ -102,20 +104,20 @@ export class ConversationController {
   /**
    * Get coaching prompt based on current emotion
    */
-  generateCoachingPrompt = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { emotion, context } = req.body;
+//   generateCoachingPrompt = async (req: Request, res: Response): Promise<void> => {
+//     try {
+//       const { emotion, context } = req.body;
 
-      if (!emotion) {
-        res.status(400).json({ error: "emotion is required" });
-        return;
-      }
+//       if (!emotion) {
+//         res.status(400).json({ error: "emotion is required" });
+//         return;
+//       }
 
-      const result = await this.conversationService.generateCoachingPrompt(emotion, context);
-      res.json(result);
-    } catch (error) {
-      console.error("Error generating coaching prompt:", error);
-      res.status(500).json({ error: "Failed to generate coaching prompt" });
-    }
-  };
+//       const result = await this.conversationService.generateCoachingPrompt(emotion, context);
+//       res.json(result);
+//     } catch (error) {
+//       console.error("Error generating coaching prompt:", error);
+//       res.status(500).json({ error: "Failed to generate coaching prompt" });
+//     }
+//   };
 }

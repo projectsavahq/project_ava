@@ -20,6 +20,5 @@ router.get("/:userId/wellness", usersController.getWellnessMetrics);
 router.delete("/:userId", usersController.deactivateUser);
 
 // Get user's crisis history
-router.get("/:userId/crisis-events", usersController.getCrisisHistory);
 
 export default router;

@@ -17,6 +17,5 @@ router.get("/history/:sessionId", conversationController.getConversationHistory)
 router.post("/analyze-emotion", conversationController.analyzeEmotion);
 
 // Get coaching prompt based on current emotion
-router.post("/coaching-prompt", conversationController.generateCoachingPrompt);
 
 export default router;

@@ -122,6 +122,23 @@ export const authValidationSchemas = {
     }),
     code: otpCodeSchema,
   }),
+  
+  verifyOTPRegistration: Joi.object({
+    email: emailSchema,
+    otpCode: otpCodeSchema,
+  }),
+  
+  requestPasswordResetOTP: Joi.object({
+    email: emailSchema,
+  }),
+  
+  verifyOTPPasswordReset: Joi.object({
+    email: emailSchema,
+    otpCode: otpCodeSchema,
+    newPassword: passwordSchema.required().messages({
+      'any.required': 'New password is required',
+    }),
+  }),
 };
 
 // Admin validation schemas

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { User, IUser } from '../models/schemas/User';
 import { Admin, IAdmin } from '../models/schemas/Admin';
 import { logAuth, logError, logInfo, logWarn } from '../utils/logger';
+import { emailService } from './emailService';
 
 export interface SignupData {
   email: string;
@@ -41,7 +42,7 @@ export class AuthService {
   /**
    * Register a new user
    */
-  async signup(signupData: SignupData): Promise<{ user: IUser; verificationToken: string }> {
+  async signup(signupData: SignupData): Promise<{ user: IUser }> {
     const { email, name, password } = signupData;
     
     logInfo(`AUTH: Starting signup process for ${email}`);
@@ -76,10 +77,18 @@ export class AuthService {
 
     await user.save();
     
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(email, verificationToken);
+    } catch (error) {
+      logError(`AUTH: Failed to send verification email to ${email}`, error);
+      // Don't throw error here, user is still created, they can request resend
+    }
+    
     logAuth.signup(email, true);
     logInfo(`AUTH: User created successfully: ${email}`);
 
-    return { user, verificationToken };
+    return { user };
   }
 
   /**
@@ -270,7 +279,7 @@ export class AuthService {
   /**
    * Forgot password - generate reset token
    */
-  async forgotPassword(email: string): Promise<string> {
+  async forgotPassword(email: string): Promise<void> {
     logInfo(`AUTH: Password reset request for ${email}`);
     
     const user = await User.findOne({ email: email.toLowerCase() });
@@ -278,7 +287,8 @@ export class AuthService {
       // Don't reveal if email exists or not
       logAuth.passwordReset(email, 'REQUEST', false);
       logWarn(`AUTH: Password reset request for non-existent email: ${email}`);
-      throw new Error('If this email exists, a password reset link has been sent');
+      // Still return success to not reveal if email exists
+      return;
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -288,10 +298,15 @@ export class AuthService {
     user.passwordResetExpires = resetExpires;
     await user.save();
     
-    logAuth.passwordReset(email, 'REQUEST', true);
-    logInfo(`AUTH: Password reset token generated for ${email}`);
-
-    return resetToken;
+    // Send password reset email
+    try {
+      await emailService.sendPasswordResetEmail(email, resetToken);
+      logAuth.passwordReset(email, 'REQUEST', true);
+      logInfo(`AUTH: Password reset email sent to ${email}`);
+    } catch (error) {
+      logError(`AUTH: Failed to send password reset email to ${email}`, error);
+      throw new Error('Failed to send password reset email');
+    }
   }
 
   /**
@@ -469,6 +484,189 @@ export class AuthService {
     await user.save();
 
     return true;
+  }
+
+  /**
+   * Register user with OTP verification
+   */
+  async signupWithOTP(signupData: SignupData): Promise<{ user: IUser }> {
+    const { email, name, password } = signupData;
+    
+    logInfo(`AUTH: Starting OTP signup process for ${email}`);
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      logAuth.signup(email, false);
+      logWarn(`AUTH: OTP signup failed - user already exists: ${email}`);
+      throw new Error('User with this email already exists');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
+
+    // Generate OTP code (6-digit number)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Create user with OTP
+    const user = new User({
+      userId: crypto.randomUUID(),
+      email: email.toLowerCase(),
+      name,
+      password: hashedPassword,
+      emailVerified: false,
+      otpCode: otpCode,
+      otpExpires: otpExpires,
+      loginAttempts: 0,
+      passwordHistory: []
+    });
+
+    await user.save();
+    
+    // Send OTP email
+    try {
+      await emailService.sendOTP({
+        email,
+        otpCode,
+        purpose: 'registration',
+        expiresIn: 5 * 60 * 1000
+      });
+    } catch (error) {
+      logError(`AUTH: Failed to send OTP email to ${email}`, error);
+      // Clean up user if email fails
+      await User.deleteOne({ _id: user._id });
+      throw new Error('Failed to send verification email');
+    }
+    
+    logAuth.signup(email, true);
+    logInfo(`AUTH: OTP signup successful, OTP sent to ${email}`);
+
+    return { user };
+  }
+
+  /**
+   * Verify OTP for registration
+   */
+  async verifyOTPForRegistration(email: string, otpCode: string): Promise<IUser> {
+    logInfo(`AUTH: OTP verification attempt for registration: ${email}`);
+    
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      otpCode,
+      otpExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      logAuth.otpVerification(email, false, 'Invalid or expired OTP');
+      logWarn(`AUTH: OTP verification failed - invalid or expired OTP: ${email}`);
+      throw new Error('Invalid or expired OTP');
+    }
+
+    // Mark email as verified and clear OTP
+    user.emailVerified = true;
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+    
+    logAuth.otpVerification(email, true, 'Registration');
+    logInfo(`AUTH: OTP verification successful for registration: ${email}`);
+
+    return user;
+  }
+
+  /**
+   * Request OTP for password reset
+   */
+  async requestPasswordResetOTP(email: string): Promise<void> {
+    logInfo(`AUTH: OTP password reset request for ${email}`);
+    
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      // Don't reveal if email exists or not
+      logAuth.passwordReset(email, 'OTP_REQUEST', false);
+      logWarn(`AUTH: OTP password reset request for non-existent email: ${email}`);
+      return;
+    }
+
+    // Generate OTP code (6-digit number)
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    user.otpCode = otpCode;
+    user.otpExpires = otpExpires;
+    await user.save();
+    
+    // Send OTP email
+    try {
+      await emailService.sendOTP({
+        email,
+        otpCode,
+        purpose: 'password_reset',
+        expiresIn: 5 * 60 * 1000
+      });
+      logAuth.passwordReset(email, 'OTP_REQUEST', true);
+      logInfo(`AUTH: OTP password reset sent to ${email}`);
+    } catch (error) {
+      logError(`AUTH: Failed to send OTP password reset email to ${email}`, error);
+      throw new Error('Failed to send OTP email');
+    }
+  }
+
+  /**
+   * Verify OTP for password reset and set new password
+   */
+  async verifyOTPPasswordReset(email: string, otpCode: string, newPassword: string): Promise<void> {
+    logInfo(`AUTH: OTP password reset verification for ${email}`);
+    
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      otpCode,
+      otpExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      logAuth.passwordReset(email, 'OTP_RESET', false);
+      logWarn(`AUTH: OTP password reset failed - invalid or expired OTP: ${email}`);
+      throw new Error('Invalid or expired OTP');
+    }
+
+    // Check against password history
+    if (user.passwordHistory.length > 0) {
+      for (const oldPassword of user.passwordHistory) {
+        const isSameAsOldPassword = await bcrypt.compare(newPassword, oldPassword.password);
+        if (isSameAsOldPassword) {
+          throw new Error('Cannot reuse recent passwords');
+        }
+      }
+    }
+
+    // Add current password to history if it exists
+    if (user.password) {
+      user.passwordHistory.push({
+        password: user.password,
+        createdAt: new Date()
+      });
+
+      // Keep only last 5 passwords
+      if (user.passwordHistory.length > 5) {
+        user.passwordHistory = user.passwordHistory.slice(-5);
+      }
+    }
+
+    // Hash and set new password
+    const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+    user.password = hashedPassword;
+    user.passwordChangedAt = new Date();
+    user.otpCode = undefined;
+    user.otpExpires = undefined;
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+
+    await user.save();
+    
+    logAuth.passwordReset(email, 'OTP_RESET', true);
+    logInfo(`AUTH: OTP password reset completed successfully: ${email}`);
   }
 
   /**
