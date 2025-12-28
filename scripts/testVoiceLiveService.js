@@ -27,6 +27,14 @@ async function testVoiceLiveService() {
     service.on('audio-delta', (message) => {
         if (message.delta) {
             console.log('🔊 Audio delta received, length:', message.delta.length);
+            // Play audio through speaker if available
+            if (speaker) {
+                try {
+                    speaker.write(Buffer.from(message.delta, 'base64'));
+                } catch (error) {
+                    console.log('🔊 Speaker playback failed:', error.message);
+                }
+            }
         }
     });
 
@@ -71,12 +79,47 @@ async function testVoiceLiveService() {
         // Wait a bit to receive session confirmation
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Skip speaker initialization in server environment
-        console.log('🔊 Speaker playback skipped (system dependency not available)');
+        // Initialize speaker for audio playback
+        try {
+            speaker = new Speaker({
+                channels: 1,
+                bitDepth: 16,
+                sampleRate: SAMPLE_RATE
+            });
+            console.log('✅ Speaker initialized');
+        } catch (error) {
+            console.log('🔊 Speaker initialization failed (system dependency not available):', error.message);
+        }
 
-        // Skip microphone recording in server environment
-        console.log('🎤 Microphone recording skipped (system dependency not available)');
-        console.log('✅ Using text input only for testing');
+        // Start microphone recording
+        try {
+            micInstance = mic({
+                rate: SAMPLE_RATE.toString(),
+                channels: '1',
+                bitwidth: '16',
+                encoding: 'signed-integer',
+                endian: 'little',
+                device: 'default'
+            });
+
+            const micStream = micInstance.getAudioStream();
+
+            micStream.on('data', (chunk) => {
+                if (!stopFlag) {
+                    service.sendAudio(chunk);
+                }
+            });
+
+            micStream.on('error', (err) => {
+                console.error('🎤 Mic error:', err);
+            });
+
+            micInstance.start();
+            console.log('✅ Microphone started - speak into your microphone!');
+        } catch (error) {
+            console.log('🎤 Microphone initialization failed (system dependency not available):', error.message);
+            console.log('✅ Using text input only for testing');
+        }
 
         // Set up keyboard input for text messages and quitting
         const rl = readline.createInterface({
@@ -115,6 +158,20 @@ async function testVoiceLiveService() {
 
         // Cleanup
         console.log('🧹 Cleaning up...');
+        if (micInstance) {
+            try {
+                micInstance.stop();
+            } catch (error) {
+                console.log('🎤 Mic cleanup failed:', error.message);
+            }
+        }
+        if (speaker) {
+            try {
+                speaker.end();
+            } catch (error) {
+                console.log('🔊 Speaker cleanup failed:', error.message);
+            }
+        }
         service.disconnect();
 
         console.log('✅ Test completed successfully!');
@@ -124,6 +181,20 @@ async function testVoiceLiveService() {
         console.error(error.stack);
 
         // Cleanup on error
+        if (micInstance) {
+            try {
+                micInstance.stop();
+            } catch (error) {
+                console.log('🎤 Mic cleanup failed:', error.message);
+            }
+        }
+        if (speaker) {
+            try {
+                speaker.end();
+            } catch (error) {
+                console.log('🔊 Speaker cleanup failed:', error.message);
+            }
+        }
         service.disconnect();
     }
 }

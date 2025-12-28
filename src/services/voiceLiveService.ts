@@ -237,6 +237,7 @@ export class VoiceLiveService extends EventEmitter {
       type: 'session.update',
       session: {
         instructions: 'You are a helpful AI assistant. Respond quickly and concisely in natural, engaging language. Keep responses brief and conversational.',
+        modalities: ['text', 'audio'],
         turn_detection: {
           type: 'azure_semantic_vad',
           threshold: 0.2,
@@ -260,6 +261,11 @@ export class VoiceLiveService extends EventEmitter {
           type: 'azure-standard',
           temperature: temperature,
           rate: '1.3'
+        },
+        input_audio_transcription: {
+          enabled: true,
+          model: 'gpt-4o-mini-transcribe',
+          format: 'text'
         }
       },
       event_id: uuidv4()
@@ -308,6 +314,14 @@ export class VoiceLiveService extends EventEmitter {
 
         case 'conversation.item.created':
           logInfo(`[VoiceLiveService] Conversation item created: ${message.item?.id}`);
+          break;
+
+        case 'response.output_item.added':
+          logInfo(`[VoiceLiveService] Response output item added`);
+          break;
+
+        case 'response.content_part.added':
+          logInfo(`[VoiceLiveService] Response content part added`);
           break;
 
         case 'response.created':
