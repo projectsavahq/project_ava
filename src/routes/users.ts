@@ -11,11 +11,6 @@ router.get("/:userId", usersController.getUserProfile);
 router.patch("/:userId", usersController.updateUser);
 
 // Get user's conversation sessions
-router.get("/:userId/sessions", usersController.getUserSessions);
-
-// Get user's wellness metrics
-router.get("/:userId/wellness", usersController.getWellnessMetrics);
-
 // Deactivate user (soft delete)
 router.delete("/:userId", usersController.deactivateUser);
 

@@ -18,7 +18,6 @@ import { dbConnection } from "./models/database";
 import { mongoDb } from "./models/mongoDatabase";
 
 // Import routes
-import conversationRoutes from "./routes/conversation";
 import healthRoutes from "./routes/health";
 import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
@@ -62,8 +61,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/conversation", conversationRoutes);
+app.use("/api/admin", adminRoutes);        
 app.use("/api/health", healthRoutes);
 app.use("/api/users", usersRoutes);
 

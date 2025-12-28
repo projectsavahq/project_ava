@@ -1,4 +1,4 @@
-import { User, ConversationSession, IUser, IConversationSession } from "../models/schemas";
+import { User, IUser } from "../models/schemas";
 
 export interface UserProfileResponse {
   userId: string;
@@ -130,58 +130,7 @@ export class UsersService {
   /**
    * Get user's conversation sessions
    */
-  async getUserSessions(userId: string, limit: number, status?: string): Promise<UserSessionResponse[] | null> {
-    // Check if user exists
-    const user = await User.findOne({ userId }).lean();
-    if (!user) {
-      return null;
-    }
-
-    const sessions = await ConversationSession.find({ userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
-    
-    return sessions.map((session: IConversationSession): UserSessionResponse => ({
-      sessionId: session.sessionId,
-      status: session.status,
-      createdAt: session.createdAt,
-      endedAt: session.endedAt,
-      totalMessages: session.totalMessages,
-      averageEmotion: session.averageEmotion,
-      duration: session.duration,
-    }));
-  }
-
-  /**
-   * Get user's wellness metrics
-   */
-  async getWellnessMetrics(userId: string, days: number): Promise<any | null> {
-    const user = await User.findOne({ userId }).lean();
-    if (!user) {
-      return null;
-    }
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const sessions = await Promise.all([
-      ConversationSession.find({
-        userId,
-        createdAt: { $gte: startDate },
-      }).lean(),
-    ]);
-
-    // Calculate metrics
-    const totalSessions = sessions.length;
-   
-
-    return {
-      totalSessions,
-      engagementLevel:
-        totalSessions >= 3 ? "high" : totalSessions >= 1 ? "medium" : "low",
-    };
-  }
+  
 
   /**
    * Deactivate user (soft delete)
@@ -230,11 +179,4 @@ export class UsersService {
   /**
    * Clear all user data
    */
-  async clearUserData(userId: string): Promise<void> {
-    // Delete all related data and deactivate user
-    await Promise.all([
-      ConversationSession.deleteMany({ userId }),
-           User.findOneAndUpdate({ userId }, { isActive: false }),
-    ]);
-  }
 }
