@@ -23,11 +23,12 @@ import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 
+// Import Voice Live Gateway for WebSocket voice communication
+import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
+
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimiter";
-
-// Import Voice Live Gateway for WebSocket voice communication
 
 dotenv.config();
 
@@ -67,8 +68,7 @@ app.use("/api/users", usersRoutes);
 
 // WebSocket connection for real-time communication
 // EXPLANATION: Initialize Voice Live Gateway for voice conversations
-
-// Create a dedicated namespace for voice at '/voice' and forward events to the gateway
+const voiceGateway = new VoiceLiveGateway(io);
 
 
 // Error handling middleware

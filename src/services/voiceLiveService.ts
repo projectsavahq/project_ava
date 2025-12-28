@@ -166,6 +166,14 @@ export class VoiceLiveService extends EventEmitter {
       };
 
       this.ws.send(JSON.stringify(message));
+
+      // After creating the conversation item, trigger a response
+      const responseMessage = {
+        type: 'response.create',
+        event_id: uuidv4()
+      };
+
+      this.ws.send(JSON.stringify(responseMessage));
       this.resetSessionTimeout();
 
     } catch (error) {
@@ -229,17 +237,16 @@ export class VoiceLiveService extends EventEmitter {
       type: 'session.update',
       session: {
         instructions: 'You are a helpful AI assistant. Respond quickly and concisely in natural, engaging language. Keep responses brief and conversational.',
-        modalities: ['text', 'audio'],
         turn_detection: {
           type: 'azure_semantic_vad',
-          threshold: 0.4,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 300,
+          threshold: 0.2,
+          prefix_padding_ms: 100,
+          silence_duration_ms: 100,
           remove_filler_words: true,
           end_of_utterance_detection: {
             model: 'semantic_detection_v1',
-            threshold: 0.006,
-            timeout: 1.2
+            threshold: 0.005,
+            timeout: 1
           }
         },
         input_audio_noise_reduction: {
@@ -253,11 +260,6 @@ export class VoiceLiveService extends EventEmitter {
           type: 'azure-standard',
           temperature: temperature,
           rate: '1.3'
-        },
-        input_audio_transcription: {
-          enabled: true,
-          model: 'gpt-4o-mini-transcribe',
-          format: 'text'
         }
       },
       event_id: uuidv4()
@@ -292,12 +294,20 @@ export class VoiceLiveService extends EventEmitter {
           logInfo(`[VoiceLiveService] Session created: ${message.session?.id}`);
           break;
 
+        case 'session.updated':
+          logInfo(`[VoiceLiveService] Session updated`);
+          break;
+
         case 'input_audio_buffer.speech_started':
           this.emit('speech-started');
           break;
 
         case 'input_audio_buffer.speech_stopped':
           this.emit('speech-stopped');
+          break;
+
+        case 'conversation.item.created':
+          logInfo(`[VoiceLiveService] Conversation item created: ${message.item?.id}`);
           break;
 
         case 'response.created':
@@ -322,6 +332,14 @@ export class VoiceLiveService extends EventEmitter {
               item_id: message.item_id
             });
           }
+          break;
+
+        case 'response.audio_transcript.done':
+          logInfo(`[VoiceLiveService] Audio transcript completed`);
+          this.emit('transcript-done', {
+            response_id: message.response_id,
+            item_id: message.item_id
+          });
           break;
 
         case 'response.audio.delta':

@@ -103,6 +103,11 @@ export class VoiceLiveGateway {
       this.handleTranscriptDelta(message);
     });
 
+    // Handle transcript completion
+    this.voiceService.on('transcript-done', (message) => {
+      this.handleTranscriptDone(message);
+    });
+
     // Handle user transcripts
     this.voiceService.on('user-transcript', (message) => {
       this.handleUserTranscript(message);
@@ -336,6 +341,10 @@ export class VoiceLiveGateway {
       this.handleTranscriptDelta(message, sessionId);
     });
 
+    service.on('transcript-done', (message) => {
+      this.handleTranscriptDone(message, sessionId);
+    });
+
     service.on('user-transcript', (message) => {
       this.handleUserTranscript(message, sessionId);
     });
@@ -366,6 +375,18 @@ export class VoiceLiveGateway {
 
     // Forward relevant events to client
     switch (message.type) {
+      case 'session.created':
+        session.socket.emit('voice:session-ready');
+        break;
+
+      case 'session.updated':
+        // Session configuration acknowledged
+        break;
+
+      case 'conversation.item.created':
+        // Conversation item acknowledged
+        break;
+
       case 'response.created':
         session.socket.emit('voice:response-started');
         break;
@@ -409,6 +430,19 @@ export class VoiceLiveGateway {
         isFinal: false
       });
     }
+  }
+
+  /**
+   * EXPLANATION: Handle transcript completion from Azure
+   */
+  private handleTranscriptDone(message: any, sessionId?: string): void {
+    const session = sessionId ? this.activeSessions.get(sessionId) : null;
+    if (!session) return;
+
+    session.socket.emit('voice:assistant-transcript', {
+      transcript: '',
+      isFinal: true
+    });
   }
 
   /**
