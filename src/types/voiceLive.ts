@@ -60,6 +60,7 @@ export interface SessionConfig {
   type: "session.update";
   session: {
     instructions: string; // System prompt telling AI how to behave
+    modalities?: string[]; // Communication modes: ['text', 'audio']
     turn_detection: TurnDetectionConfig;
     input_audio_noise_reduction: {
       type: string;
@@ -68,6 +69,11 @@ export interface SessionConfig {
       type: string;
     };
     voice: VoiceOutputConfig;
+    input_audio_transcription?: {
+      enabled: boolean;
+      model: string;
+      format: string;
+    };
   };
   event_id?: string;
 }

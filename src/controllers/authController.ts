@@ -38,12 +38,11 @@ export class AuthController {
         return;
       }
 
-      const { user, verificationToken } = await authService.signup({
+       const { user } = await authService.signupWithOTP({
         email,
         name,
         password
       });
-
       res.status(201).json({
         success: true,
         message: 'User registered successfully. Please check your email for verification.',
@@ -51,9 +50,7 @@ export class AuthController {
           userId: user.userId,
           email: user.email,
           name: user.name,
-          emailVerified: user.emailVerified,
-          // In production, send this via email instead of returning it
-          verificationToken: process.env.NODE_ENV === 'development' ? verificationToken : undefined
+          emailVerified: user.emailVerified
         }
       });
     } catch (error) {
@@ -245,13 +242,11 @@ export class AuthController {
         return;
       }
 
-      const resetToken = await authService.forgotPassword(email);
+      await authService.forgotPassword(email);
 
       res.json({
         success: true,
-        message: 'If this email exists, a password reset link has been sent.',
-        // In production, send this via email instead of returning it
-        data: process.env.NODE_ENV === 'development' ? { resetToken } : undefined
+        message: 'If this email exists, a password reset link has been sent.'
       });
     } catch (error) {
       res.status(400).json({
@@ -421,6 +416,167 @@ export class AuthController {
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve profile'
+      });
+    }
+  }
+
+  /**
+   * POST /auth/signup-otp
+   * Register a new user with OTP verification
+   */
+  async signupWithOTP(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, name, password } = req.body;
+
+      if (!email || !password) {
+        res.status(400).json({
+          success: false,
+          message: 'Email and password are required'
+        });
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid email format'
+        });
+        return;
+      }
+
+      if (password.length < 8) {
+        res.status(400).json({
+          success: false,
+          message: 'Password must be at least 8 characters long'
+        });
+        return;
+      }
+
+      const { user } = await authService.signupWithOTP({
+        email,
+        name,
+        password
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully. Please check your email for OTP verification.',
+        data: {
+          userId: user.userId,
+          email: user.email,
+          name: user.name,
+          emailVerified: user.emailVerified
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Signup with OTP failed'
+      });
+    }
+  }
+
+  /**
+   * POST /auth/verify-otp-registration
+   * Verify OTP for registration
+   */
+  async verifyOTPForRegistration(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otpCode } = req.body;
+
+      if (!email || !otpCode) {
+        res.status(400).json({
+          success: false,
+          message: 'Email and OTP code are required'
+        });
+        return;
+      }
+
+      const user = await authService.verifyOTPForRegistration(email, otpCode);
+
+      res.json({
+        success: true,
+        message: 'Email verified successfully',
+        data: {
+          userId: user.userId,
+          email: user.email,
+          name: user.name,
+          emailVerified: user.emailVerified
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'OTP verification failed'
+      });
+    }
+  }
+
+  /**
+   * POST /auth/request-password-reset-otp
+   * Request OTP for password reset
+   */
+  async requestPasswordResetOTP(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+        return;
+      }
+
+      await authService.requestPasswordResetOTP(email);
+
+      res.json({
+        success: true,
+        message: 'If this email exists, an OTP has been sent for password reset.'
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Password reset OTP request failed'
+      });
+    }
+  }
+
+  /**
+   * POST /auth/verify-otp-password-reset
+   * Verify OTP and reset password
+   */
+  async verifyOTPPasswordReset(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otpCode, newPassword } = req.body;
+
+      if (!email || !otpCode || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Email, OTP code, and new password are required'
+        });
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        res.status(400).json({
+          success: false,
+          message: 'Password must be at least 8 characters long'
+        });
+        return;
+      }
+
+      await authService.verifyOTPPasswordReset(email, otpCode, newPassword);
+
+      res.json({
+        success: true,
+        message: 'Password reset successfully'
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Password reset failed'
       });
     }
   }

@@ -1,4 +1,4 @@
-import { User, ConversationSession, CrisisEvent, IUser, ICrisisEvent, IConversationSession } from "../models/schemas";
+import { User, IUser } from "../models/schemas";
 
 export interface UserProfileResponse {
   userId: string;
@@ -130,65 +130,7 @@ export class UsersService {
   /**
    * Get user's conversation sessions
    */
-  async getUserSessions(userId: string, limit: number, status?: string): Promise<UserSessionResponse[] | null> {
-    // Check if user exists
-    const user = await User.findOne({ userId }).lean();
-    if (!user) {
-      return null;
-    }
-
-    const sessions = await ConversationSession.find({ userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
-    
-    return sessions.map((session: IConversationSession): UserSessionResponse => ({
-      sessionId: session.sessionId,
-      status: session.status,
-      createdAt: session.createdAt,
-      endedAt: session.endedAt,
-      totalMessages: session.totalMessages,
-      averageEmotion: session.averageEmotion,
-      duration: session.duration,
-    }));
-  }
-
-  /**
-   * Get user's wellness metrics
-   */
-  async getWellnessMetrics(userId: string, days: number): Promise<any | null> {
-    const user = await User.findOne({ userId }).lean();
-    if (!user) {
-      return null;
-    }
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    const [sessions, crisisEvents] = await Promise.all([
-      ConversationSession.find({
-        userId,
-        createdAt: { $gte: startDate },
-      }).lean(),
-      CrisisEvent.find({
-        userId,
-        detectedAt: { $gte: startDate },
-      }).lean(),
-    ]);
-
-    // Calculate metrics
-    const totalSessions = sessions.length;
-    const averageDuration =
-      sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / totalSessions || 0;
-
-    return {
-      totalSessions,
-      averageDuration,
-      crisisEventCount: crisisEvents.length,
-      engagementLevel:
-        totalSessions >= 3 ? "high" : totalSessions >= 1 ? "medium" : "low",
-    };
-  }
+  
 
   /**
    * Deactivate user (soft delete)
@@ -213,40 +155,28 @@ export class UsersService {
   /**
    * Get user's crisis history
    */
-  async getCrisisHistory(userId: string, limit: number): Promise<CrisisHistoryResponse | null> {
-    const user = await User.findOne({ userId }).lean();
-    if (!user) {
-      return null;
-    }
+//   async getCrisisHistory(userId: string, limit: number): Promise<CrisisHistoryResponse | null> {
+//     const user = await User.findOne({ userId }).lean();
+//     if (!user) {
+//       return null;
+//     }
 
-    const crisisEvents = await CrisisEvent.find({ userId })
-      .sort({ detectedAt: -1 })
-      .limit(limit)
-      .lean();
-
-    return {
-      crisisHistory: user.crisisHistory,
-      events: crisisEvents.map((event: ICrisisEvent): CrisisEventResponse => ({
-        id: event._id.toString(),
-        severity: event.severity,
-        detectedAt: event.detectedAt,
-        status: event.status,
-        keywords: event.keywords,
-        confidence: event.confidence,
-        responseActions: event.responseActions,
-      })),
-    };
-  }
+   
+//     return {
+//       crisisHistory: user.crisisHistory,
+//       events: crisisEvents.map((event: ICrisisEvent): CrisisEventResponse => ({
+//         id: event._id.toString(),
+//         severity: event.severity,
+//         detectedAt: event.detectedAt,
+//         status: event.status,
+//         keywords: event.keywords,
+//         confidence: event.confidence,
+//         responseActions: event.responseActions,
+//       })),
+//     };
+//   }
 
   /**
    * Clear all user data
    */
-  async clearUserData(userId: string): Promise<void> {
-    // Delete all related data and deactivate user
-    await Promise.all([
-      ConversationSession.deleteMany({ userId }),
-      CrisisEvent.deleteMany({ userId }),
-      User.findOneAndUpdate({ userId }, { isActive: false }),
-    ]);
-  }
 }

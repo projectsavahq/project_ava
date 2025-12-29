@@ -53,63 +53,7 @@ export class UsersController {
     }
   };
 
-  /**
-   * Get user's conversation sessions
-   */
-  getUserSessions = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
-      const { limit = "10", status } = req.query;
 
-      const sessions = await this.usersService.getUserSessions(
-        userId, 
-        parseInt(limit as string),
-        status as string
-      );
-
-      if (sessions === null) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      res.json({
-        userId,
-        sessions,
-      });
-    } catch (error) {
-      console.error("Error fetching user sessions:", error);
-      res.status(500).json({ error: "Failed to fetch user sessions" });
-    }
-  };
-
-  /**
-   * Get user's wellness metrics
-   */
-  getWellnessMetrics = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
-      const { days = "7" } = req.query;
-
-      const metrics = await this.usersService.getWellnessMetrics(
-        userId, 
-        parseInt(days as string)
-      );
-
-      if (metrics === null) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      res.json({
-        userId,
-        timeframe: `${days} days`,
-        metrics,
-      });
-    } catch (error) {
-      console.error("Error fetching wellness metrics:", error);
-      res.status(500).json({ error: "Failed to fetch wellness metrics" });
-    }
-  };
 
   /**
    * Deactivate user (soft delete)
@@ -139,29 +83,29 @@ export class UsersController {
   /**
    * Get user's crisis history
    */
-  getCrisisHistory = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
-      const { limit = "20" } = req.query;
+//   getCrisisHistory = async (req: Request, res: Response): Promise<void> => {
+//     try {
+//       const { userId } = req.params;
+//       const { limit = "20" } = req.query;
 
-      const crisisData = await this.usersService.getCrisisHistory(
-        userId, 
-        parseInt(limit as string)
-      );
+//       const crisisData = await this.usersService.getCrisisHistory(
+//         userId, 
+//         parseInt(limit as string)
+//       );
 
-      if (crisisData === null) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
+//       if (crisisData === null) {
+//         res.status(404).json({ error: "User not found" });
+//         return;
+//       }
 
-      res.json({
-        userId,
-        crisisHistory: crisisData.crisisHistory,
-        events: crisisData.events,
-      });
-    } catch (error) {
-      console.error("Error fetching crisis events:", error);
-      res.status(500).json({ error: "Failed to fetch crisis events" });
-    }
-  };
+//       res.json({
+//         userId,
+//         crisisHistory: crisisData.crisisHistory,
+//         events: crisisData.events,
+//       });
+//     } catch (error) {
+//       console.error("Error fetching crisis events:", error);
+//       res.status(500).json({ error: "Failed to fetch crisis events" });
+//     }
+//   };
 }

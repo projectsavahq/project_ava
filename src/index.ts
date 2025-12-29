@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -11,27 +11,24 @@ import { Server } from "socket.io";
 import { logger, morganStream, logInfo, logError } from "./utils/logger";
 
 // Import swagger
-import { specs, getSwaggerSpecs, swaggerUi } from "./config/swagger";
+import { specs, swaggerUi } from "./config/swagger";
 
 // Import database
 import { dbConnection } from "./models/database";
 import { mongoDb } from "./models/mongoDatabase";
 
 // Import routes
-import voiceRoutes from "./routes/voice";
-import conversationRoutes from "./routes/conversation";
-import crisisRoutes from "./routes/crisis";
 import healthRoutes from "./routes/health";
 import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 
+// Import Voice Live Gateway for WebSocket voice communication
+import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
+
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimiter";
-
-// Import Voice Live Gateway for WebSocket voice communication
-import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
 
 dotenv.config();
 
@@ -41,8 +38,7 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:3000",
-    methods: ["GET", "POST","PUT","PATCH"],
-    credentials: true
+    methods: ["GET", "POST"],
   },
 });
 
@@ -50,12 +46,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
-}));
+app.use(cors());
 app.use(morgan("combined", { stream: morganStream }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -63,104 +54,22 @@ app.use(cookieParser());
 app.use(rateLimiter);
 
 // Swagger Documentation
-app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
-  // Dynamically set the server URL based on the incoming request
-  // Check for forwarded headers first (for deployed environments behind proxies)
-  const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'https';
-  const host = req.get('X-Forwarded-Host') || req.get('Host') || `localhost:${PORT}`;
-  
-  // For deployed environments, ensure we use the correct protocol and host
-  const serverUrl = `${protocol}://${host}`;
-  
-  // Set CORS headers for Swagger UI
-  res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || "http://localhost:3000");
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  next();
-}, swaggerUi.serve, (req: Request, res: Response, next: NextFunction) => {
-  // Dynamically set the server URL based on the incoming request
-  const protocol = req.get('X-Forwarded-Proto') || req.protocol || 'https';
-  const host = req.get('X-Forwarded-Host') || req.get('Host') || `localhost:${PORT}`;
-  const serverUrl = `${protocol}://${host}`;
-  
-  // Get dynamic specs with correct server URL
-  const dynamicSpecs = getSwaggerSpecs(serverUrl);
-  
-  // Setup Swagger UI with dynamic specs
-  swaggerUi.setup(dynamicSpecs, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "AVA Authentication API Documentation",
-    swaggerOptions: {
-      docExpansion: 'none',
-      filter: true,
-      showRequestDuration: true,
-      servers: dynamicSpecs.servers
-    }
-  })(req, res, next);
-});
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AVA Authentication API Documentation"
+}));
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/voice", voiceRoutes);
-app.use("/api/conversation", conversationRoutes);
-app.use("/api/crisis", crisisRoutes);
+app.use("/api/admin", adminRoutes);        
 app.use("/api/health", healthRoutes);
 app.use("/api/users", usersRoutes);
 
 // WebSocket connection for real-time communication
 // EXPLANATION: Initialize Voice Live Gateway for voice conversations
-const voiceLiveGateway = new VoiceLiveGateway();
-// Initialize gateway with the main io server
-voiceLiveGateway.afterInit(io);
+const voiceGateway = new VoiceLiveGateway(io);
 
-// Create a dedicated namespace for voice at '/voice' and forward events to the gateway
-const voiceNamespace = io.of('/voice');
-
-voiceNamespace.on('connection', (socket) => {
-  logInfo(`[Voice Namespace] Client connected: ${socket.id}`);
-
-  // Forward lifecycle event to gateway
-  try {
-    // Call the gateway's connection handler (non-decorator usage)
-    (voiceLiveGateway as any).handleConnection?.(socket);
-  } catch (e) {
-    logError('[Voice Namespace] Error in handleConnection', e);
-  }
-
-  // Wire voice-related events to the gateway methods
-  socket.on('voice:connect', (payload: any) => {
-    (voiceLiveGateway as any).handleVoiceConnect?.(socket, payload);
-  });
-
-  socket.on('voice:audio', (payload: any) => {
-    (voiceLiveGateway as any).handleAudioChunk?.(socket, payload);
-  });
-
-  socket.on('voice:text-input', (payload: any) => {
-    (voiceLiveGateway as any).handleTextInput?.(socket, payload);
-  });
-
-  socket.on('voice:disconnect', (payload: any) => {
-    (voiceLiveGateway as any).handleVoiceDisconnect?.(socket, payload);
-  });
-
-  socket.on('voice:heartbeat', (payload: any) => {
-    (voiceLiveGateway as any).handleHeartbeat?.(socket, payload);
-  });
-
-  socket.on('disconnect', (reason: any) => {
-    logInfo(`[Voice Namespace] Client disconnected: ${socket.id} (${reason})`);
-    try {
-      (voiceLiveGateway as any).handleDisconnect?.(socket);
-    } catch (e) {
-      logError('[Voice Namespace] Error in handleDisconnect', e);
-    }
-  });
-});
 
 // Error handling middleware
 app.use(errorHandler);

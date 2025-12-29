@@ -607,4 +607,207 @@ router.post('/send-otp', authMiddleware, validate(authValidationSchemas.sendOTP)
  */
 router.post('/verify-otp', authMiddleware, validate(authValidationSchemas.verifyOTP), authController.verifyOTP);
 
+/**
+ * @swagger
+ * /api/auth/signup-otp:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Register a new user with OTP verification
+ *     description: |
+ *       Create a new user account with email and password, and send OTP to email for verification.
+ *       Email verification is required before login.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SignupRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             password: "securePassword123"
+ *             name: "John Doe"
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "User registered successfully. Please check your email for OTP verification."
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 emailVerified: false
+ *       400:
+ *         description: Bad request - validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_fields:
+ *                 summary: Missing required fields
+ *                 value:
+ *                   success: false
+ *                   message: "Email and password are required"
+ *               invalid_email:
+ *                 summary: Invalid email format
+ *                 value:
+ *                   success: false
+ *                   message: "Invalid email format"
+ *               weak_password:
+ *                 summary: Password too short
+ *                 value:
+ *                   success: false
+ *                   message: "Password must be at least 8 characters long"
+ *               user_exists:
+ *                 summary: User already exists
+ *                 value:
+ *                   success: false
+ *                   message: "User with this email already exists"
+ */
+router.post('/signup-otp', validate(authValidationSchemas.signup), authController.signupWithOTP);
+
+/**
+ * @swagger
+ * /api/auth/verify-otp-registration:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Verify OTP for registration
+ *     description: Verify user's email address using the OTP sent during signup.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OTPRegistrationVerificationRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             otpCode: "123456"
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Email verified successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 emailVerified: true
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Invalid or expired OTP"
+ */
+router.post('/verify-otp-registration', validate(authValidationSchemas.verifyOTPRegistration), authController.verifyOTPForRegistration);
+
+/**
+ * @swagger
+ * /api/auth/request-password-reset-otp:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Request OTP for password reset
+ *     description: Send an OTP to the user's email for password reset verification.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PasswordResetOTPRequest'
+ *           example:
+ *             email: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "If this email exists, an OTP has been sent for password reset."
+ *       400:
+ *         description: Bad request - missing email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Email is required"
+ */
+router.post('/request-password-reset-otp', validate(authValidationSchemas.requestPasswordResetOTP), authController.requestPasswordResetOTP);
+
+/**
+ * @swagger
+ * /api/auth/verify-otp-password-reset:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Verify OTP and reset password
+ *     description: |
+ *       Verify the OTP and reset the user's password.
+ *       OTP expires in 5 minutes. Password cannot be one of the last 5 used passwords.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/OTPPasswordResetRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             otpCode: "123456"
+ *             newPassword: "newSecurePassword123"
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Password reset successfully"
+ *       400:
+ *         description: Bad request - validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_fields:
+ *                 summary: Missing required fields
+ *                 value:
+ *                   success: false
+ *                   message: "Email, OTP code, and new password are required"
+ *               weak_password:
+ *                 summary: Password too short
+ *                 value:
+ *                   success: false
+ *                   message: "Password must be at least 8 characters long"
+ *               invalid_otp:
+ *                 summary: Invalid or expired OTP
+ *                 value:
+ *                   success: false
+ *                   message: "Invalid or expired OTP"
+ *               password_reuse:
+ *                 summary: Password recently used
+ *                 value:
+ *                   success: false
+ *                   message: "Cannot reuse recent passwords"
+ */
+router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyOTPPasswordReset), authController.verifyOTPPasswordReset);
+
 export default router;

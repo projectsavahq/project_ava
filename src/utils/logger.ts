@@ -131,8 +131,12 @@ export const logAuth = {
   emailVerification: (email: string, success: boolean) => {
     logger.info(`AUTH: Email verification - ${email} - ${success ? 'SUCCESS' : 'FAILED'}`);
   },
-  passwordReset: (email: string, action: 'REQUEST' | 'RESET', success: boolean) => {
+  passwordReset: (email: string, action: 'REQUEST' | 'RESET' | 'OTP_REQUEST' | 'OTP_RESET', success: boolean) => {
     logger.info(`AUTH: Password ${action.toLowerCase()} - ${email} - ${success ? 'SUCCESS' : 'FAILED'}`);
+  },
+  otpVerification: (email: string, success: boolean, reason?: string) => {
+    const status = success ? 'SUCCESS' : `FAILED${reason ? ` - ${reason}` : ''}`;
+    logger.info(`AUTH: OTP verification - ${email} - ${status}`);
   },
   accountLock: (email: string, attempts: number) => {
     logger.warn(`AUTH: Account locked - ${email} - ${attempts} failed attempts`);
