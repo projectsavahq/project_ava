@@ -12,11 +12,86 @@ const readline = require('readline');
 const SAMPLE_RATE = 24000;
 let stopFlag = false;
 
+/**
+ * AudioBuffer class to handle bursty audio data from Azure
+ * and provide smooth playback to Speaker
+ */
+class AudioBuffer {
+    constructor(speaker) {
+        this.buffer = [];
+        this.speaker = speaker;
+        this.isPlaying = false;
+        this.chunkSize = 4096; // Process audio in smaller chunks
+    }
+
+    /**
+     * Add audio data to the buffer
+     */
+    addAudio(audioBuffer) {
+        this.buffer.push(audioBuffer);
+        if (!this.isPlaying) {
+            this.startPlayback();
+        }
+    }
+
+    /**
+     * Start feeding audio to speaker
+     */
+    startPlayback() {
+        if (this.isPlaying || this.buffer.length === 0) return;
+
+        this.isPlaying = true;
+        this.feedNextChunk();
+    }
+
+    /**
+     * Feed next chunk to speaker
+     */
+    feedNextChunk() {
+        if (this.buffer.length === 0) {
+            this.isPlaying = false;
+            return;
+        }
+
+        const chunk = this.buffer.shift();
+        const writeResult = this.speaker.write(chunk);
+
+        // If write returns false, speaker buffer is full, wait for drain
+        if (!writeResult) {
+            this.speaker.once('drain', () => {
+                this.feedNextChunk();
+            });
+        } else {
+            // Continue immediately if buffer has space
+            setImmediate(() => this.feedNextChunk());
+        }
+    }
+
+    /**
+     * Clear buffer and stop playback
+     */
+    clear() {
+        this.buffer = [];
+        this.isPlaying = false;
+    }
+
+    /**
+     * Get buffer status for debugging
+     */
+    getStatus() {
+        return {
+            queued: this.buffer.length,
+            isPlaying: this.isPlaying
+        };
+    }
+}
+
 async function testVoiceLiveService() {
     console.log('🧪 Testing VoiceLiveService integration with audio recording...');
 
     const service = new VoiceLiveService();
     let speaker = null;
+    let audioBuffer = null;
     let micInstance = null;
 
     // Set up event listeners
@@ -28,11 +103,14 @@ async function testVoiceLiveService() {
         if (message.delta) {
             console.log('🔊 Audio delta received, length:', message.delta.length);
             // Play audio through speaker if available
-            if (speaker) {
+            if (audioBuffer) {
                 try {
-                    speaker.write(Buffer.from(message.delta, 'base64'));
+                    const audioChunk = Buffer.from(message.delta, 'base64');
+                    console.log('🔊 Decoded buffer length:', audioChunk.length, 'bytes');
+                    console.log('🔊 Audio buffer status:', audioBuffer.getStatus());
+                    audioBuffer.addAudio(audioChunk);
                 } catch (error) {
-                    console.log('🔊 Speaker playback failed:', error.message);
+                    console.log('🔊 Audio buffer failed:', error.message);
                 }
             }
         }
@@ -84,9 +162,32 @@ async function testVoiceLiveService() {
             speaker = new Speaker({
                 channels: 1,
                 bitDepth: 16,
-                sampleRate: SAMPLE_RATE
+                sampleRate: SAMPLE_RATE,
+                samplesPerFrame: 2048  // Try larger buffer to reduce underflow
             });
-            console.log('✅ Speaker initialized');
+            console.log('✅ Speaker initialized with config:', {
+                channels: 1,
+                bitDepth: 16,
+                sampleRate: SAMPLE_RATE,
+                samplesPerFrame: 2048
+            });
+
+            // Create audio buffer to handle bursty audio data
+            audioBuffer = new AudioBuffer(speaker);
+
+            // Add speaker event listeners for debugging
+            speaker.on('error', (err) => {
+                console.log('🔊 Speaker error:', err.message);
+            });
+
+            speaker.on('finish', () => {
+                console.log('🔊 Speaker finished playback');
+            });
+
+            speaker.on('close', () => {
+                console.log('🔊 Speaker closed');
+            });
+
         } catch (error) {
             console.log('🔊 Speaker initialization failed (system dependency not available):', error.message);
         }
@@ -106,6 +207,7 @@ async function testVoiceLiveService() {
 
             micStream.on('data', (chunk) => {
                 if (!stopFlag) {
+                    console.log('🎤 Mic chunk received, size:', chunk.length);
                     service.sendAudio(chunk);
                 }
             });
@@ -165,6 +267,13 @@ async function testVoiceLiveService() {
                 console.log('🎤 Mic cleanup failed:', error.message);
             }
         }
+        if (audioBuffer) {
+            try {
+                audioBuffer.clear();
+            } catch (error) {
+                console.log('🔊 Audio buffer cleanup failed:', error.message);
+            }
+        }
         if (speaker) {
             try {
                 speaker.end();
@@ -186,6 +295,13 @@ async function testVoiceLiveService() {
                 micInstance.stop();
             } catch (error) {
                 console.log('🎤 Mic cleanup failed:', error.message);
+            }
+        }
+        if (audioBuffer) {
+            try {
+                audioBuffer.clear();
+            } catch (error) {
+                console.log('🔊 Audio buffer cleanup failed:', error.message);
             }
         }
         if (speaker) {

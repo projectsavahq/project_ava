@@ -63,8 +63,8 @@ export class EmailService {
       port: smtpPort,
       secure: isSecure, // true for 465, false for other ports
       auth: {
-        user: "no-reply@avaflow.ai",
-        pass: "Noreply@projectava",
+        user: smtpUser,
+        pass: smtpPass,
       },
       // Add additional options for better error handling
       tls: {
