@@ -22,6 +22,7 @@ import healthRoutes from "./routes/health";
 import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
+import sessionsRoutes from "./routes/sessions";
 
 // Import Voice Live Gateway for WebSocket voice communication
 import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
@@ -53,6 +54,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(rateLimiter);
 
+// Static files
+app.use(express.static('public'));
+
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   explorer: true,
@@ -62,9 +66,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/admin", adminRoutes);        
+app.use("/api/admin", adminRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/sessions", sessionsRoutes);
 
 // WebSocket connection for real-time communication
 // EXPLANATION: Initialize Voice Live Gateway for voice conversations

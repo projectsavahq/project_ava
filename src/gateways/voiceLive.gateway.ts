@@ -15,6 +15,7 @@
 import { Server, Socket } from 'socket.io';
 import { VoiceLiveService } from '../services/voiceLiveService';
 import { logInfo, logError, logWarn } from '../utils/logger';
+import { Session, Message } from '../models/schemas';
 import {
   VoiceGatewayEvents,
   VoiceServerEvents,
@@ -34,6 +35,7 @@ export class VoiceLiveGateway {
   private io: Server;
   private voiceService: VoiceLiveService;
   private activeSessions: Map<string, { socket: Socket; userId: string; service: VoiceLiveService }> = new Map();
+  private assistantMessages: Map<string, { content: string; responseId: string }> = new Map();
 
   constructor(io: Server) {
     this.io = io;
@@ -168,6 +170,26 @@ export class VoiceLiveGateway {
         userId,
         service: sessionService
       });
+
+      // Save session to database
+      try {
+        await Session.create({
+          sessionId: finalSessionId,
+          userId,
+          status: 'active',
+          userPreferences,
+          metadata: {
+            connectedAt: new Date().toISOString(),
+            sampleRate: 24000,
+            channels: 1,
+            userAgent: socket.handshake.headers['user-agent']
+          }
+        });
+        logInfo(`[VoiceLiveGateway] Session ${finalSessionId} saved to database`);
+      } catch (dbError) {
+        logError(`[VoiceLiveGateway] Failed to save session ${finalSessionId} to database`, dbError);
+        // Continue anyway - don't block the connection
+      }
 
       // Set up event handlers for this session's service
       this.setupSessionServiceHandlers(sessionService, finalSessionId);
@@ -420,7 +442,7 @@ export class VoiceLiveGateway {
   /**
    * EXPLANATION: Handle transcript delta from Azure
    */
-  private handleTranscriptDelta(message: any, sessionId?: string): void {
+  private async handleTranscriptDelta(message: any, sessionId?: string): Promise<void> {
     const session = sessionId ? this.activeSessions.get(sessionId) : null;
     if (!session) return;
 
@@ -429,13 +451,24 @@ export class VoiceLiveGateway {
         transcript: message.delta,
         isFinal: false
       });
+
+      // Accumulate assistant message content
+      const responseId = message.response_id || 'unknown';
+      const key = `${sessionId}_${responseId}`;
+
+      if (!this.assistantMessages.has(key)) {
+        this.assistantMessages.set(key, { content: '', responseId });
+      }
+
+      const msgBuffer = this.assistantMessages.get(key)!;
+      msgBuffer.content += message.delta;
     }
   }
 
   /**
    * EXPLANATION: Handle transcript completion from Azure
    */
-  private handleTranscriptDone(message: any, sessionId?: string): void {
+  private async handleTranscriptDone(message: any, sessionId?: string): Promise<void> {
     const session = sessionId ? this.activeSessions.get(sessionId) : null;
     if (!session) return;
 
@@ -443,12 +476,39 @@ export class VoiceLiveGateway {
       transcript: '',
       isFinal: true
     });
+
+    // Save accumulated assistant message to database
+    const responseId = message.response_id || 'unknown';
+    const key = `${sessionId}_${responseId}`;
+    const msgBuffer = this.assistantMessages.get(key);
+
+    if (msgBuffer && msgBuffer.content.trim()) {
+      try {
+        await Message.create({
+          sessionId,
+          userId: session.userId,
+          role: 'assistant',
+          content: msgBuffer.content.trim(),
+          timestamp: new Date(),
+          metadata: {
+            responseId,
+            source: 'voice_synthesis'
+          }
+        });
+        logInfo(`[VoiceLiveGateway] Assistant message saved for session ${sessionId}`);
+      } catch (dbError) {
+        logError(`[VoiceLiveGateway] Failed to save assistant message for session ${sessionId}`, dbError);
+      }
+
+      // Clean up the buffer
+      this.assistantMessages.delete(key);
+    }
   }
 
   /**
    * EXPLANATION: Handle user transcript from Azure
    */
-  private handleUserTranscript(message: any, sessionId?: string): void {
+  private async handleUserTranscript(message: any, sessionId?: string): Promise<void> {
     const session = sessionId ? this.activeSessions.get(sessionId) : null;
     if (!session) return;
 
@@ -458,6 +518,24 @@ export class VoiceLiveGateway {
         isFinal: true,
         confidence: message.confidence || 0.9
       });
+
+      // Save user message to database
+      try {
+        await Message.create({
+          sessionId,
+          userId: session.userId,
+          role: 'user',
+          content: message.transcript,
+          timestamp: new Date(),
+          metadata: {
+            confidence: message.confidence || 0.9,
+            source: 'voice_transcription'
+          }
+        });
+        logInfo(`[VoiceLiveGateway] User message saved for session ${sessionId}`);
+      } catch (dbError) {
+        logError(`[VoiceLiveGateway] Failed to save user message for session ${sessionId}`, dbError);
+      }
     }
   }
 
@@ -484,13 +562,29 @@ export class VoiceLiveGateway {
   /**
    * EXPLANATION: Handle service disconnection
    */
-  private handleServiceDisconnected(sessionId: string): void {
+  private async handleServiceDisconnected(sessionId: string): Promise<void> {
     const session = this.activeSessions.get(sessionId);
     if (session) {
+      const endTime = new Date();
       session.socket.emit('voice:session-ended', {
         sessionId,
-        endedAt: new Date().toISOString()
+        endedAt: endTime.toISOString()
       });
+
+      // Update session in database
+      try {
+        const sessionDoc = await Session.findOne({ sessionId });
+        if (sessionDoc) {
+          sessionDoc.endTime = endTime;
+          sessionDoc.status = 'ended';
+          sessionDoc.duration = endTime.getTime() - sessionDoc.startTime.getTime();
+          await sessionDoc.save();
+          logInfo(`[VoiceLiveGateway] Session ${sessionId} ended and updated in database`);
+        }
+      } catch (dbError) {
+        logError(`[VoiceLiveGateway] Failed to update session ${sessionId} in database`, dbError);
+      }
+
       this.activeSessions.delete(sessionId);
     }
   }
@@ -524,5 +618,6 @@ export class VoiceLiveGateway {
       sessionEntry.service.disconnect();
     }
     this.activeSessions.clear();
+    this.assistantMessages.clear();
   }
 }

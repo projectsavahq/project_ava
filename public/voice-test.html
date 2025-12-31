@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Live Chat Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 900px;
+            height: 800px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0078d4, #106ebe);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .auth-section, .chat-section {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .auth-section {
+            background: #f8f9fa;
+        }
+
+        .auth-form {
+            max-width: 400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.agent {
+            background: #f1f8e9;
+            margin-right: auto;
+        }
+
+        .message.system {
+            background: #fff3e0;
+            text-align: center;
+            max-width: 100%;
+            font-style: italic;
+            color: #666;
+        }
+
+        .message .sender {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .message.user .sender {
+            color: #1976d2;
+        }
+
+        .message.agent .sender {
+            color: #388e3c;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #106ebe;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connecting {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+
+        .status-indicator.disconnected {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .recording-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: recording-pulse 1s infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes recording-pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .voice-config {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .voice-config h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .voice-config select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Voice Live Chat Test</h1>
+            <div class="status">
+                <span class="status-indicator disconnected" id="statusIndicator"></span>
+                <span id="statusText">Not authenticated</span>
+            </div>
+        </div>
+
+        <!-- Authentication Section -->
+        <div class="auth-section" id="authSection">
+            <div class="auth-form">
+                <h2 style="text-align: center; margin-bottom: 20px;">Login to Voice Chat</h2>
+
+                <div id="authError" class="error-message hidden"></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" required placeholder="user@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" required placeholder="Enter password">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                </form>
+
+                <div style="text-align: center; margin: 20px 0;">
+                    <p>Don't have an account? <a href="#" id="showSignup">Sign up</a></p>
+                </div>
+
+                <!-- Signup Form (hidden by default) -->
+                <form id="signupForm" class="hidden">
+                    <div class="form-group">
+                        <label for="signupName">Name:</label>
+                        <input type="text" id="signupName" required placeholder="Your name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupEmail">Email:</label>
+                        <input type="email" id="signupEmail" required placeholder="user@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupPassword">Password:</label>
+                        <input type="password" id="signupPassword" required placeholder="Enter password">
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%; margin-bottom: 10px;">Sign Up</button>
+                    <button type="button" class="btn btn-secondary" id="backToLogin" style="width: 100%; background: #6c757d;">Back to Login</button>
+                </form>
+
+                <!-- OTP Verification (hidden by default) -->
+                <form id="otpForm" class="hidden">
+                    <p style="text-align: center; margin-bottom: 15px;">Check your email for the OTP code</p>
+                    <div class="form-group">
+                        <label for="otpCode">OTP Code:</label>
+                        <input type="text" id="otpCode" required placeholder="123456" maxlength="6">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">Verify Email</button>
+                    <button type="button" class="btn btn-secondary" id="backToSignup" style="width: 100%; background: #6c757d;">Back</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section hidden" id="chatSection">
+            <div class="voice-config">
+                <h3>Voice Settings</h3>
+                <select id="voiceSelect">
+                    <option value="en-US-Ava:DragonHDLatestNeural">Ava (HD)</option>
+                    <option value="en-US-Andrew:DragonHDLatestNeural">Andrew (HD)</option>
+                    <option value="en-US-EmmaMultilingualNeural">Emma (Multilingual)</option>
+                    <option value="en-US-JennyMultilingualNeural" selected>Jenny (Multilingual)</option>
+                </select>
+            </div>
+
+            <div class="chat-area" id="chatArea">
+                <div class="message system">
+                    <div>Welcome to Voice Chat! Click "Start Voice Session" to begin.</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="startVoiceBtn">
+                    <span>🎤 Start Voice Session</span>
+                </button>
+                <button class="btn btn-danger" id="stopVoiceBtn" disabled>
+                    <span>⏹️ Stop Voice Session</span>
+                </button>
+                <button class="btn btn-secondary" id="logoutBtn" style="background: #6c757d;">
+                    <span>🚪 Logout</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:3002';
+        let socket = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentSessionId = null;
+        let accessToken = null;
+
+        // DOM Elements
+        const authSection = document.getElementById('authSection');
+        const chatSection = document.getElementById('chatSection');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const chatArea = document.getElementById('chatArea');
+
+        // Auth Forms
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const otpForm = document.getElementById('otpForm');
+        const authError = document.getElementById('authError');
+
+        // Buttons
+        const startVoiceBtn = document.getElementById('startVoiceBtn');
+        const stopVoiceBtn = document.getElementById('stopVoiceBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const showSignup = document.getElementById('showSignup');
+        const backToLogin = document.getElementById('backToLogin');
+        const backToSignup = document.getElementById('backToSignup');
+
+        // Utility functions
+        function getUserIdFromToken(token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.userId || payload.id || payload.sub || 'unknown-user';
+            } catch (error) {
+                console.error('Failed to parse token:', error);
+                return 'unknown-user';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            checkAuthStatus();
+        });
+
+        function setupEventListeners() {
+            // Auth forms
+            loginForm.addEventListener('submit', handleLogin);
+            signupForm.addEventListener('submit', handleSignup);
+            otpForm.addEventListener('submit', handleOTPVerification);
+
+            // Navigation
+            showSignup.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSignupForm();
+            });
+            backToLogin.addEventListener('click', showLoginForm);
+            backToSignup.addEventListener('click', showSignupForm);
+
+            // Voice controls
+            startVoiceBtn.addEventListener('click', startVoiceSession);
+            stopVoiceBtn.addEventListener('click', stopVoiceSession);
+            logoutBtn.addEventListener('click', handleLogout);
+        }
+
+        // Authentication Functions
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    accessToken = data.data.accessToken;
+                    localStorage.setItem('accessToken', accessToken);
+                    showChatInterface();
+                    updateStatus('Authenticated', 'connected');
+                } else {
+                    showAuthError(data.message || 'Login failed');
+                }
+            } catch (error) {
+                showAuthError('Login failed: ' + error.message);
+            }
+        }
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/signup-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showOTPForm(email);
+                } else {
+                    showAuthError(data.message);
+                }
+            } catch (error) {
+                showAuthError('Signup failed: ' + error.message);
+            }
+        }
+
+        async function handleOTPVerification(e) {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const otpCode = document.getElementById('otpCode').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/verify-otp-registration`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otpCode })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Auto-login after verification
+                    const password = document.getElementById('signupPassword').value;
+                    await performLogin(email, password);
+                } else {
+                    showAuthError(data.message);
+                }
+            } catch (error) {
+                showAuthError('OTP verification failed: ' + error.message);
+            }
+        }
+
+        async function performLogin(email, password) {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    accessToken = data.data.accessToken;
+                    localStorage.setItem('accessToken', accessToken);
+                    showChatInterface();
+                    updateStatus('Authenticated', 'connected');
+                } else {
+                    showAuthError(data.message);
+                }
+            } catch (error) {
+                showAuthError('Auto-login failed: ' + error.message);
+            }
+        }
+
+        function handleLogout() {
+            accessToken = null;
+            localStorage.removeItem('accessToken');
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            showAuthInterface();
+            updateStatus('Logged out', 'disconnected');
+        }
+
+        async function checkAuthStatus() {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+                accessToken = token;
+                // Verify token is still valid
+                try {
+                    const response = await fetch(`${API_BASE}/api/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        showChatInterface();
+                        updateStatus('Authenticated', 'connected');
+                        return;
+                    }
+                } catch (error) {
+                    console.log('Token validation failed');
+                }
+                // Token invalid, remove it
+                localStorage.removeItem('accessToken');
+                accessToken = null;
+            }
+            showAuthInterface();
+        }
+
+        // UI Functions
+        function showAuthInterface() {
+            authSection.classList.remove('hidden');
+            chatSection.classList.add('hidden');
+            showLoginForm();
+        }
+
+        function showChatInterface() {
+            authSection.classList.add('hidden');
+            chatSection.classList.remove('hidden');
+        }
+
+        function showLoginForm() {
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+            otpForm.classList.add('hidden');
+            authError.classList.add('hidden');
+        }
+
+        function showSignupForm() {
+            loginForm.classList.add('hidden');
+            signupForm.classList.remove('hidden');
+            otpForm.classList.add('hidden');
+            authError.classList.add('hidden');
+        }
+
+        function showOTPForm(email) {
+            document.getElementById('signupEmail').value = email;
+            signupForm.classList.add('hidden');
+            otpForm.classList.remove('hidden');
+            authError.classList.add('hidden');
+        }
+
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.remove('hidden');
+        }
+
+        function updateStatus(text, status) {
+            statusText.textContent = text;
+            statusIndicator.className = `status-indicator ${status}`;
+        }
+
+        function addMessage(text, type = 'system', sender = '') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+
+            if (sender) {
+                const senderDiv = document.createElement('div');
+                senderDiv.className = 'sender';
+                senderDiv.textContent = sender;
+                messageDiv.appendChild(senderDiv);
+            }
+
+            const textDiv = document.createElement('div');
+            textDiv.textContent = text;
+            messageDiv.appendChild(textDiv);
+
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        // Voice Functions
+        async function startVoiceSession() {
+            try {
+                updateStatus('Connecting to voice service...', 'connecting');
+
+                // Initialize Socket.IO connection
+                socket = io('http://localhost:3002/voice', {
+                    auth: {
+                        token: accessToken
+                    }
+                });
+
+                setupSocketListeners();
+
+                // Generate session ID
+                currentSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+                // Connect to voice service
+                socket.emit('voice:connect', {
+                    userId: getUserIdFromToken(accessToken), // Extract from JWT token
+                    sessionId: currentSessionId,
+                    userPreferences: {
+                        voicePreference: document.getElementById('voiceSelect').value
+                    }
+                });
+
+            } catch (error) {
+                console.error('Failed to start voice session:', error);
+                updateStatus('Connection failed', 'disconnected');
+                addMessage('Failed to start voice session: ' + error.message, 'system');
+            }
+        }
+
+        function stopVoiceSession() {
+            if (socket) {
+                socket.emit('voice:disconnect', { sessionId: currentSessionId });
+                socket.disconnect();
+                socket = null;
+            }
+
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+            }
+
+            updateStatus('Voice session ended', 'disconnected');
+            startVoiceBtn.disabled = false;
+            stopVoiceBtn.disabled = true;
+            currentSessionId = null;
+        }
+
+        function setupSocketListeners() {
+            socket.on('connect', () => {
+                console.log('Connected to voice service');
+                updateStatus('Connected to voice service', 'connected');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from voice service');
+                updateStatus('Disconnected', 'disconnected');
+            });
+
+            socket.on('voice:connected', (data) => {
+                console.log('Voice session established:', data);
+                addMessage('Voice session started! You can now speak.', 'system');
+                startVoiceBtn.disabled = true;
+                stopVoiceBtn.disabled = false;
+
+                // Start microphone recording
+                startMicrophoneRecording();
+            });
+
+            socket.on('voice:session-ended', (data) => {
+                console.log('Voice session ended:', data);
+                addMessage('Voice session ended.', 'system');
+                stopVoiceSession();
+            });
+
+            socket.on('voice:audio', (data) => {
+                console.log('Received audio chunk');
+                playAudio(data.audio);
+            });
+
+            socket.on('voice:user-transcript', (data) => {
+                console.log('User transcript:', data);
+                addMessage(data.transcript, 'user', 'You');
+            });
+
+            socket.on('voice:assistant-transcript', (data) => {
+                console.log('Assistant transcript:', data);
+                if (data.isFinal) {
+                    addMessage(data.transcript, 'agent', 'Assistant');
+                }
+            });
+
+            socket.on('voice:speech-started', () => {
+                console.log('Speech started');
+                addMessage('🎤 Listening...', 'system');
+            });
+
+            socket.on('voice:speech-stopped', () => {
+                console.log('Speech stopped');
+                addMessage('🔇 Processing...', 'system');
+            });
+
+            socket.on('voice:error', (error) => {
+                console.error('Voice error:', error);
+                addMessage('Error: ' + error.error, 'system');
+            });
+        }
+
+        async function startMicrophoneRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 24000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    if (audioChunks.length > 0) {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        audioChunks = [];
+
+                        // Convert to base64 and send
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64Audio = reader.result.split(',')[1];
+                            if (socket && socket.connected) {
+                                socket.emit('voice:audio', {
+                                    audio: base64Audio,
+                                    sessionId: currentSessionId
+                                });
+                            }
+                        };
+                        reader.readAsDataURL(audioBlob);
+                    }
+                };
+
+                // Start recording with small time slices
+                mediaRecorder.start(100); // 100ms chunks
+                isRecording = true;
+
+                addMessage('🎤 Microphone active - start speaking!', 'system');
+
+            } catch (error) {
+                console.error('Microphone access failed:', error);
+                addMessage('Microphone access failed: ' + error.message, 'system');
+            }
+        }
+
+        function playAudio(base64Audio) {
+            try {
+                const audioBuffer = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0));
+                const blob = new Blob([audioBuffer], { type: 'audio/pcm' });
+                const audioUrl = URL.createObjectURL(blob);
+
+                const audio = new Audio(audioUrl);
+                audio.play().catch(error => {
+                    console.error('Audio playback failed:', error);
+                });
+
+                // Clean up URL after playback
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                };
+            } catch (error) {
+                console.error('Audio processing failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>
