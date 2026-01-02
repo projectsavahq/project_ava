@@ -505,8 +505,8 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
 
-    // Generate OTP code (6-digit number)
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate OTP code (5-digit number)
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Create user with OTP
@@ -589,8 +589,8 @@ export class AuthService {
       return;
     }
 
-    // Generate OTP code (6-digit number)
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate OTP code (5-digit number)
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     user.otpCode = otpCode;
@@ -670,51 +670,66 @@ export class AuthService {
   }
 
   /**
-   * Admin signup
+   * Admin signup with OTP verification
    */
-  async adminSignup(signupData: {
+  async adminSignupWithOTP(signupData: {
     email: string;
     name: string;
     password: string;
-  }): Promise<{ admin: IAdmin; verificationToken: string }> {
+  }): Promise<{ admin: IAdmin }> {
     const { email, name, password } = signupData;
     
-    logInfo(`AUTH: Starting admin signup process for ${email}`);
+    logInfo(`AUTH: Starting admin OTP signup process for ${email}`);
 
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({ email: email.toLowerCase() });
     if (existingAdmin) {
       logAuth.signup(email, false);
-      logWarn(`AUTH: Admin signup failed - admin already exists: ${email}`);
+      logWarn(`AUTH: Admin OTP signup failed - admin already exists: ${email}`);
       throw new Error('Admin with this email already exists');
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, this.SALT_ROUNDS);
 
-    // Generate email verification token (6-digit number)
-    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Generate OTP code (5-digit number)
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    // Create admin
+    // Create admin with OTP
     const admin = new Admin({
       adminId: crypto.randomUUID(),
       email: email.toLowerCase(),
       name,
       password: hashedPassword,
       emailVerified: false,
-      emailVerificationToken: verificationToken,
-      emailVerificationExpires: verificationExpires,
+      otpCode: otpCode,
+      otpExpires: otpExpires,
       loginAttempts: 0,
       passwordHistory: []
     });
 
     await admin.save();
     
+    // Send OTP email
+    try {
+      await emailService.sendOTP({
+        email,
+        otpCode,
+        purpose: 'admin_registration',
+        expiresIn: 5 * 60 * 1000
+      });
+    } catch (error) {
+      logError(`AUTH: Failed to send OTP email to ${email}`, error);
+      // Clean up admin if email fails
+      await Admin.deleteOne({ _id: admin._id });
+      throw new Error('Failed to send verification email');
+    }
+    
     logAuth.signup(email, true);
-    logInfo(`AUTH: Admin created successfully: ${email}`);
+    logInfo(`AUTH: Admin OTP signup successful, OTP sent to ${email}`);
 
-    return { admin, verificationToken };
+    return { admin };
   }
 
   /**
@@ -810,6 +825,36 @@ export class AuthService {
 
     logAuth.emailVerification(admin.email, true);
     logInfo(`AUTH: Admin email verified successfully: ${admin.email}`);
+
+    return admin;
+  }
+
+  /**
+   * Verify OTP for admin registration
+   */
+  async verifyAdminOTPForRegistration(email: string, otpCode: string): Promise<IAdmin> {
+    logInfo(`AUTH: Admin OTP verification attempt for registration: ${email}`);
+    
+    const admin = await Admin.findOne({
+      email: email.toLowerCase(),
+      otpCode,
+      otpExpires: { $gt: new Date() }
+    });
+
+    if (!admin) {
+      logAuth.otpVerification(email, false, 'Invalid or expired OTP');
+      logWarn(`AUTH: Admin OTP verification failed - invalid or expired OTP: ${email}`);
+      throw new Error('Invalid or expired OTP');
+    }
+
+    // Mark email as verified and clear OTP
+    admin.emailVerified = true;
+    admin.otpCode = undefined;
+    admin.otpExpires = undefined;
+    await admin.save();
+    
+    logAuth.otpVerification(email, true, 'Admin Registration');
+    logInfo(`AUTH: Admin OTP verification successful for registration: ${email}`);
 
     return admin;
   }

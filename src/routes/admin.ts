@@ -12,7 +12,7 @@ const router = Router();
  *   post:
  *     tags: [Admin]
  *     summary: Register a new admin account
- *     description: Create a new admin account with email, name, and password. Email verification is required before login.
+ *     description: Create a new admin account with email, name, and password. An OTP will be sent to the email for verification before login.
  *     requestBody:
  *       required: true
  *       content:
@@ -25,20 +25,19 @@ const router = Router();
  *             password: "SecurePassword123"
  *     responses:
  *       201:
- *         description: Admin registered successfully
+ *         description: Admin registered successfully. OTP sent to email.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessResponse'
  *             example:
  *               success: true
- *               message: "Admin registered successfully. Please check your email for verification."
+ *               message: "Admin registered successfully. Please check your email for OTP verification."
  *               data:
  *                 adminId: "123e4567-e89b-12d3-a456-426614174000"
  *                 email: "admin@ava-support.com"
  *                 name: "Admin User"
  *                 emailVerified: false
- *                 verificationToken: "abc123..." # Only in development
  *       400:
  *         description: Bad request - validation errors
  *         content:
@@ -174,6 +173,62 @@ router.post(
   '/verify-email',
   validate(adminValidationSchemas.verifyEmail),
   (req, res) => adminController.verifyEmail(req, res)
+);
+
+/**
+ * @swagger
+ * /api/admin/verify-otp-registration:
+ *   post:
+ *     tags: [Admin]
+ *     summary: Verify admin OTP for registration
+ *     description: Verify admin's email address using the OTP code sent during signup.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otpCode
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               otpCode:
+ *                 type: string
+ *                 pattern: '^\d{5}$'
+ *           example:
+ *             email: "admin@ava-support.com"
+ *             otpCode: "12345"
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Email verified successfully"
+ *               data:
+ *                 adminId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "admin@ava-support.com"
+ *                 name: "Admin User"
+ *                 emailVerified: true
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Invalid or expired OTP"
+ */
+router.post(
+  '/verify-otp-registration',
+  (req, res) => adminController.verifyOTPForRegistration(req, res)
 );
 
 /**
