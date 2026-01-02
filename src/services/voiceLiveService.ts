@@ -62,15 +62,29 @@ export class VoiceLiveService extends EventEmitter {
 
       this.ws = new WebSocket(wsUrl, { headers });
 
-      return new Promise((resolve, reject) => {
+      // configurable connect timeout
+      const connectTimeoutMs = parseInt(process.env.VOICE_LIVE_WS_CONNECT_TIMEOUT_MS || '15000', 10);
+
+      return await new Promise((resolve, reject) => {
         if (!this.ws) return reject(new Error('WebSocket creation failed'));
+
+        let settled = false;
+        const finish = (err?: any) => {
+          if (settled) return;
+          settled = true;
+          if (err) return reject(err);
+          return resolve();
+        };
 
         const connectionTimeout = setTimeout(() => {
           this.state.connectionStatus = 'error';
-          reject(new Error('Connection timeout'));
-        }, 10000);
+          const err = new Error(`Connection timeout after ${connectTimeoutMs}ms`);
+          logWarn(`[VoiceLiveService] ${err.message}`);
+          finish(err);
+        }, connectTimeoutMs);
 
         this.ws.on('open', () => {
+          if (settled) return;
           clearTimeout(connectionTimeout);
           logInfo(`[VoiceLiveService] WebSocket connected for session ${sessionId}`);
           this.state.connectionStatus = 'connected';
@@ -79,13 +93,20 @@ export class VoiceLiveService extends EventEmitter {
           // Send session configuration
           this.sendSessionConfig(userPreferences);
 
-          // Start heartbeat
+          // Start heartbeat & session timeout
           this.startHeartbeat();
-
-          // Start session timeout
           this.resetSessionTimeout();
 
-          resolve();
+          finish();
+        });
+
+        // More informative 'unexpected-response' for handshake errors
+        (this.ws as any).on('unexpected-response', (req: any, res: any) => {
+          const statusCode = res && res.statusCode;
+          const statusMessage = res && res.statusMessage;
+          logWarn(`[VoiceLiveService] Unexpected response during WS handshake: ${statusCode} ${statusMessage}`);
+          clearTimeout(connectionTimeout);
+          finish(new Error(`WebSocket handshake failed: ${statusCode} ${statusMessage}`));
         });
 
         this.ws.on('message', (data: WebSocket.Data) => {
@@ -95,8 +116,7 @@ export class VoiceLiveService extends EventEmitter {
         this.ws.on('error', (error) => {
           clearTimeout(connectionTimeout);
           logError(`[VoiceLiveService] WebSocket error for session ${sessionId}`, error);
-          this.state.connectionStatus = 'error';
-          reject(error);
+          finish(error);
         });
 
         this.ws.on('close', (code, reason) => {
@@ -106,7 +126,6 @@ export class VoiceLiveService extends EventEmitter {
           this.handleDisconnection();
         });
       });
-
     } catch (error) {
       logError(`[VoiceLiveService] Connection failed for session ${sessionId}`, error);
       this.state.connectionStatus = 'error';

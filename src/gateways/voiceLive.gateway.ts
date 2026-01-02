@@ -16,6 +16,8 @@ import { Server, Socket } from 'socket.io';
 import { VoiceLiveService } from '../services/voiceLiveService';
 import { logInfo, logError, logWarn } from '../utils/logger';
 import { Session, Message } from '../models/schemas';
+import { authService } from '../services/authService';
+import jwt from 'jsonwebtoken';
 import {
   VoiceGatewayEvents,
   VoiceServerEvents,
@@ -33,15 +35,16 @@ import {
 
 export class VoiceLiveGateway {
   private io: Server;
-  private voiceService: VoiceLiveService;
+  // pending cleanups for sessions after socket disconnect - gives client time to reconnect
+  private pendingDisconnects: Map<string, NodeJS.Timeout> = new Map();
+  private reconnectGraceMs: number = parseInt(process.env.SESSION_RECONNECT_GRACE_MS || '30000', 10); // 30s default
   private activeSessions: Map<string, { socket: Socket; userId: string; service: VoiceLiveService }> = new Map();
   private assistantMessages: Map<string, { content: string; responseId: string }> = new Map();
 
   constructor(io: Server) {
     this.io = io;
-    this.voiceService = new VoiceLiveService();
+    // per-session services are created on connect; only set up namespace
     this.setupVoiceNamespace();
-    this.setupServiceEventHandlers();
   }
 
   /**
@@ -50,18 +53,62 @@ export class VoiceLiveGateway {
   private setupVoiceNamespace(): void {
     const voiceNamespace = this.io.of('/voice');
 
+    // Authenticate incoming socket connections for /voice namespace
+    // Accept token via socket.handshake.auth.token or Authorization header
+    voiceNamespace.use((socket: Socket, next) => {
+      const authToken = socket.handshake.auth?.token
+        || (socket.handshake.headers?.authorization && (socket.handshake.headers.authorization as string).startsWith('Bearer ')
+          ? (socket.handshake.headers.authorization as string).split(' ')[1]
+          : undefined);
+
+      if (!authToken) {
+        logWarn(`[VoiceLiveGateway] Socket auth failed: no token (socket=${socket.id})`);
+        return next(new Error('AUTH_REQUIRED'));
+      }
+
+      // Try authService.verifyToken first, fallback to JWT verify
+      if (authService && typeof (authService as any).verifyToken === 'function') {
+        (authService as any).verifyToken(authToken)
+          .then((user: any) => {
+            socket.data.user = user;
+            logInfo(`[VoiceLiveGateway] Socket authenticated: ${user?.email || user?.userId} (socket=${socket.id})`);
+            next();
+          })
+          .catch((err: any) => {
+            logWarn(`[VoiceLiveGateway] Token validation failed (socket=${socket.id}): ${err?.message || err}`);
+            next(new Error('AUTH_INVALID'));
+          });
+      } else {
+        try {
+          const secret = process.env.JWT_SECRET || '';
+          const user = jwt.verify(authToken, secret);
+          socket.data.user = user;
+          logInfo(`[VoiceLiveGateway] Socket JWT authenticated (socket=${socket.id})`);
+          next();
+        } catch (e) {
+          // Normalize the caught error (catch binding is 'unknown' in TS)
+          const errMsg = e instanceof Error ? e.message : String(e);
+          logWarn(`[VoiceLiveGateway] JWT auth failed (socket=${socket.id}): ${errMsg}`);
+          next(new Error('AUTH_INVALID'));
+        }
+      }
+    });
+
     voiceNamespace.on('connection', (socket: Socket) => {
-      logInfo(`[VoiceLiveGateway] Client connected: ${socket.id}`);
+      const authUser = (socket as any).data?.user;
+      logInfo(`[VoiceLiveGateway] Client connected: ${socket.id} user=${authUser?.email || authUser?.userId || 'anonymous'}`);
 
-      // Handle voice connection request
-      socket.on('voice:connect', (data: VoiceConnectDto) => {
-        this.handleVoiceConnect(socket, data);
-      });
+      // Log more details about disconnect reason for debugging
+       // Handle voice connection request
+       socket.on('voice:connect', (data: VoiceConnectDto) => {
+         this.handleVoiceConnect(socket, data);
+       });
 
-      // Handle audio data
-      socket.on('voice:audio', (data: VoiceAudioChunkDto) => {
-        this.handleVoiceAudio(socket, data);
-      });
+      // If low-level socket disconnect happens, schedule session cleanup (grace period)
+       // Handle audio data
+       socket.on('voice:audio', (data: VoiceAudioChunkDto) => {
+         this.handleVoiceAudio(socket, data);
+       });
 
       // Handle text input
       socket.on('voice:text-input', (data: VoiceTextInputDto) => {
@@ -78,60 +125,11 @@ export class VoiceLiveGateway {
         this.handleVoiceDisconnect(socket, data);
       });
 
-      // Handle socket disconnect
+      // Handle socket disconnect: schedule cleanup with grace period to allow quick reconnect
       socket.on('disconnect', (reason) => {
         logInfo(`[VoiceLiveGateway] Client disconnected: ${socket.id}, reason: ${reason}`);
         this.handleSocketDisconnect(socket);
       });
-    });
-  }
-
-  /**
-   * EXPLANATION: Set up event handlers for VoiceLiveService
-   */
-  private setupServiceEventHandlers(): void {
-    // Handle Azure messages
-    this.voiceService.on('message', (message) => {
-      this.handleAzureMessage(message);
-    });
-
-    // Handle audio deltas
-    this.voiceService.on('audio-delta', (message) => {
-      this.handleAudioDelta(message);
-    });
-
-    // Handle transcript deltas
-    this.voiceService.on('transcript-delta', (message) => {
-      this.handleTranscriptDelta(message);
-    });
-
-    // Handle transcript completion
-    this.voiceService.on('transcript-done', (message) => {
-      this.handleTranscriptDone(message);
-    });
-
-    // Handle user transcripts
-    this.voiceService.on('user-transcript', (message) => {
-      this.handleUserTranscript(message);
-    });
-
-    // Handle speech events
-    this.voiceService.on('speech-started', () => {
-      this.handleSpeechStarted();
-    });
-
-    this.voiceService.on('speech-stopped', () => {
-      this.handleSpeechStopped();
-    });
-
-    // Handle service disconnection
-    this.voiceService.on('disconnected', (data) => {
-      this.handleServiceDisconnected(data.sessionId);
-    });
-
-    // Handle errors
-    this.voiceService.on('error', (error) => {
-      this.handleServiceError(error);
     });
   }
 
@@ -152,9 +150,48 @@ export class VoiceLiveGateway {
       }
 
       const { userId, sessionId, userPreferences } = data;
+      // Ensure authenticated user (if present) is used
+      const authUser = (socket as any).data?.user;
+      let effectiveUserId = userId;
+      if (authUser) {
+        if (userId && userId !== authUser.userId) {
+          logWarn(`[VoiceLiveGateway] Mismatched userId in connect payload (socket=${socket.id}). Using authenticated userId.`);
+        }
+        effectiveUserId = authUser.userId;
+      }
 
       // Generate session ID if not provided
       const finalSessionId = sessionId || `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // If session already exists, reattach socket (cancel pending cleanup)
+      const existing = this.activeSessions.get(finalSessionId);
+      if (existing) {
+        // cancel scheduled cleanup if any
+        const pending = this.pendingDisconnects.get(finalSessionId);
+        if (pending) {
+          clearTimeout(pending);
+          this.pendingDisconnects.delete(finalSessionId);
+          logInfo(`[VoiceLiveGateway] Cancelled cleanup for session ${finalSessionId} due to reconnect`);
+        }
+
+        // attach new socket
+        existing.socket = socket;
+        existing.userId = effectiveUserId;
+
+        // echo ready and re-initialize handlers from this socket perspective
+        socket.emit('voice:connected', {
+          sessionId: finalSessionId,
+          userId: effectiveUserId,
+          status: 'ready',
+          metadata: {
+            connectedAt: new Date().toISOString(),
+            sampleRate: 24000,
+            channels: 1
+          }
+        });
+        logInfo(`[VoiceLiveGateway] Session ${finalSessionId} reattached to socket ${socket.id}`);
+        return;
+      }
 
       logInfo(`[VoiceLiveGateway] Connecting session: ${finalSessionId} for user: ${userId}`);
 
@@ -162,7 +199,7 @@ export class VoiceLiveGateway {
       const sessionService = new VoiceLiveService();
 
       // Connect to Azure
-      await sessionService.connect(finalSessionId, userId, userPreferences);
+      await sessionService.connect(finalSessionId, effectiveUserId, userPreferences);
 
       // Store session info
       this.activeSessions.set(finalSessionId, {
@@ -177,6 +214,7 @@ export class VoiceLiveGateway {
           sessionId: finalSessionId,
           userId,
           status: 'active',
+          startTime: new Date(), // ensure start time is set for duration calculations
           userPreferences,
           metadata: {
             connectedAt: new Date().toISOString(),
@@ -210,9 +248,10 @@ export class VoiceLiveGateway {
       logInfo(`[VoiceLiveGateway] Session ${finalSessionId} connected successfully`);
 
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       logError('[VoiceLiveGateway] Voice connect failed', error);
       socket.emit('voice:error', {
-        error: 'Failed to establish voice connection',
+        error: `Failed to establish voice connection: ${errMsg}`,
         code: 'CONNECTION_FAILED',
         recoverable: true
       });
@@ -327,9 +366,18 @@ export class VoiceLiveGateway {
       .find(entry => entry.socket === socket);
 
     if (sessionEntry) {
-      logInfo(`[VoiceLiveGateway] Disconnecting session: ${sessionEntry.service['state'].sessionId}`);
+      const sid = sessionEntry.service['state'].sessionId!;
+      logInfo(`[VoiceLiveGateway] User-initiated disconnect for session: ${sid}`);
+
+      // Cancel any pending cleanup timers and perform immediate cleanup
+      const pending = this.pendingDisconnects.get(sid);
+      if (pending) {
+        clearTimeout(pending);
+        this.pendingDisconnects.delete(sid);
+      }
+
       sessionEntry.service.disconnect();
-      this.activeSessions.delete(sessionEntry.service['state'].sessionId!);
+      this.activeSessions.delete(sid);
     }
   }
 
@@ -337,12 +385,42 @@ export class VoiceLiveGateway {
    * EXPLANATION: Handle socket disconnection
    */
   private handleSocketDisconnect(socket: Socket): void {
-    // Find and clean up any sessions for this socket
+    // Find sessions belonging to this socket and schedule cleanup after grace period
     for (const [sessionId, sessionEntry] of this.activeSessions.entries()) {
       if (sessionEntry.socket === socket) {
-        logInfo(`[VoiceLiveGateway] Cleaning up session ${sessionId} due to socket disconnect`);
-        sessionEntry.service.disconnect();
-        this.activeSessions.delete(sessionId);
+        logInfo(`[VoiceLiveGateway] Scheduling cleanup for session ${sessionId} in ${this.reconnectGraceMs}ms due to socket disconnect`);
+
+        // Don't schedule multiple timers for same session
+        if (this.pendingDisconnects.has(sessionId)) continue;
+
+        const timeout = setTimeout(async () => {
+          try {
+            logInfo(`[VoiceLiveGateway] Grace period expired; cleaning up session ${sessionId}`);
+            // Perform same cleanup as service disconnected
+            sessionEntry.service.disconnect();
+
+            // Update DB session end info
+            try {
+              const sessionDoc = await Session.findOne({ sessionId });
+              if (sessionDoc) {
+                const endTime = new Date();
+                sessionDoc.endTime = endTime;
+                sessionDoc.status = 'ended';
+                sessionDoc.duration = endTime.getTime() - sessionDoc.startTime.getTime();
+                await sessionDoc.save();
+                logInfo(`[VoiceLiveGateway] Session ${sessionId} ended and updated in database (grace cleanup)`);
+              }
+            } catch (dbError) {
+              logError(`[VoiceLiveGateway] Failed to update session ${sessionId} during grace cleanup`, dbError);
+            }
+
+            this.activeSessions.delete(sessionId);
+          } finally {
+            this.pendingDisconnects.delete(sessionId);
+          }
+        }, this.reconnectGraceMs);
+
+        this.pendingDisconnects.set(sessionId, timeout);
       }
     }
   }
@@ -447,13 +525,14 @@ export class VoiceLiveGateway {
     if (!session) return;
 
     if (message.delta) {
+      const responseId = message.response_id || 'unknown';
       session.socket.emit('voice:assistant-transcript', {
         transcript: message.delta,
-        isFinal: false
+        isFinal: false,
+        responseId
       });
 
       // Accumulate assistant message content
-      const responseId = message.response_id || 'unknown';
       const key = `${sessionId}_${responseId}`;
 
       if (!this.assistantMessages.has(key)) {
@@ -472,16 +551,20 @@ export class VoiceLiveGateway {
     const session = sessionId ? this.activeSessions.get(sessionId) : null;
     if (!session) return;
 
-    session.socket.emit('voice:assistant-transcript', {
-      transcript: '',
-      isFinal: true
-    });
-
-    // Save accumulated assistant message to database
+    // Send final accumulated assistant transcript to client (so they can display it)
     const responseId = message.response_id || 'unknown';
     const key = `${sessionId}_${responseId}`;
     const msgBuffer = this.assistantMessages.get(key);
+    const finalTranscript = (msgBuffer && msgBuffer.content.trim()) ? msgBuffer.content.trim() : (message.transcript || '');
 
+    // Emit final transcript (include responseId)
+    session.socket.emit('voice:assistant-transcript', {
+      transcript: finalTranscript,
+      isFinal: true,
+      responseId
+    });
+
+    // Save accumulated assistant message to database (if present)
     if (msgBuffer && msgBuffer.content.trim()) {
       try {
         await Message.create({
