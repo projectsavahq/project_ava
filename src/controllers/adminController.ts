@@ -39,7 +39,7 @@ export class AdminController {
         return;
       }
 
-      const { admin, verificationToken } = await authService.adminSignup({
+      const { admin } = await authService.adminSignupWithOTP({
         email,
         name,
         password
@@ -47,14 +47,12 @@ export class AdminController {
 
       res.status(201).json({
         success: true,
-        message: 'Admin registered successfully. Please check your email for verification.',
+        message: 'Admin registered successfully. Please check your email for OTP verification.',
         data: {
           adminId: admin.adminId,
           email: admin.email,
           name: admin.name,
-          emailVerified: admin.emailVerified,
-          // In production, send this via email instead of returning it
-          verificationToken: process.env.NODE_ENV === 'development' ? verificationToken : undefined
+          emailVerified: admin.emailVerified
         }
       });
     } catch (error) {
@@ -156,6 +154,42 @@ export class AdminController {
       res.status(400).json({
         success: false,
         message: error instanceof Error ? error.message : 'Email verification failed'
+      });
+    }
+  }
+
+  /**
+   * POST /api/admin/verify-otp-registration
+   * Verify OTP for admin registration
+   */
+  async verifyOTPForRegistration(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otpCode } = req.body;
+
+      if (!email || !otpCode) {
+        res.status(400).json({
+          success: false,
+          message: 'Email and OTP code are required'
+        });
+        return;
+      }
+
+      const admin = await authService.verifyAdminOTPForRegistration(email, otpCode);
+
+      res.json({
+        success: true,
+        message: 'Email verified successfully',
+        data: {
+          adminId: admin.adminId,
+          email: admin.email,
+          name: admin.name,
+          emailVerified: admin.emailVerified
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'OTP verification failed'
       });
     }
   }

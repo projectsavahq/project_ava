@@ -325,7 +325,7 @@ function init() {
         function stopMicrophoneRecording() {
             try {
                 if (scriptNode) { scriptNode.disconnect(); scriptNode.onaudioprocess = null; scriptNode = null; }
-                if (workletNode) { try { workletNode.port.postMessage({ type: 'stop' }); } catch (e) {} workletNode.disconnect(); workletNode = null; }
+                if (workletNode) { try { workletNode.port.postMessage({ type: 'stop' }); } catch (e) { } workletNode.disconnect(); workletNode = null; }
                 if (sourceNode) { sourceNode.disconnect(); sourceNode = null; }
                 if (zeroGain) { zeroGain.disconnect(); zeroGain = null; }
                 if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }

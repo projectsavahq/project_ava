@@ -9,6 +9,8 @@ export interface IAdmin extends Document {
   emailVerified: boolean;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
+  otpCode?: string;
+  otpExpires?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   passwordHistory: Array<{
@@ -34,6 +36,8 @@ const AdminSchema = new Schema<IAdmin>(
     emailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String },
     emailVerificationExpires: { type: Date },
+    otpCode: { type: String },
+    otpExpires: { type: Date },
     passwordResetToken: { type: String },
     passwordResetExpires: { type: Date },
     passwordHistory: [
