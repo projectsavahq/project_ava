@@ -23,6 +23,7 @@ import usersRoutes from "./routes/users";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import sessionsRoutes from "./routes/sessions";
+import waitlistRoutes from "./routes/waitlist";
 
 // Import Voice Live Gateway for WebSocket voice communication
 import { VoiceLiveGateway } from "./gateways/voiceLive.gateway";
@@ -70,6 +71,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/sessions", sessionsRoutes);
+app.use("/api/waitlist", waitlistRoutes);
 
 // WebSocket connection for real-time communication
 // EXPLANATION: Initialize Voice Live Gateway for voice conversations
