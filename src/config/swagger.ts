@@ -286,6 +286,36 @@ const options = {
               description: 'Error message'
             }
           }
+        },
+        WaitlistRequest: {
+          type: 'object',
+          required: ['email'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Email address to add to the waitlist'
+            }
+          }
+        },
+        WaitlistEntry: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Waitlist entry identifier'
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Email address stored on the waitlist'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Timestamp when the entry was created'
+            }
+          }
         }
       }
     },
@@ -297,10 +327,14 @@ const options = {
       {
         name: 'Admin',
         description: 'Admin authentication and management'
+      },
+      {
+        name: 'Waitlist',
+        description: 'Manage the application waitlist'
       }
     ]
   },
-  apis: ['./src/routes/auth.ts', './src/routes/admin.ts'], // Path to the API docs
+  apis: ['./src/routes/auth.ts', './src/routes/admin.ts', './src/routes/waitlist.ts'], // Path to the API docs
   };
   
   const specs = swaggerJsdoc(options) as any;

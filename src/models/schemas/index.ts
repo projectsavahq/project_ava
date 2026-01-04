@@ -3,3 +3,5 @@ export { User, IUser } from './User';
 export { Admin, IAdmin } from './Admin';
 export { Message, IMessage } from './Message';
 export { Session, ISession } from './Session';
+
+export { default as Waitlist } from './Waitlist';
