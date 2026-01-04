@@ -12,7 +12,7 @@ export interface EmailOptions {
 export interface OTPData {
   email: string;
   otpCode: string;
-  purpose: 'registration' | 'password_reset';
+  purpose: 'registration' | 'password_reset' | 'admin_registration';
   expiresIn: number;
 }
 
