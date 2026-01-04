@@ -166,8 +166,23 @@ export class EmailService {
     text: string;
   } {
     const minutes = Math.ceil(expiresIn / 60000);
-    const purposeText = purpose === 'registration' ? 'Registration' : 'Password Reset';
-    const purposeAction = purpose === 'registration' ? 'complete your registration' : 'reset your password';
+    let purposeText: string;
+    let purposeAction: string;
+    switch (purpose) {
+      case 'admin_registration':
+        purposeText = 'Admin Registration';
+        purposeAction = 'confirm this admin registration';
+        break;
+      case 'password_reset':
+        purposeText = 'Password Reset';
+        purposeAction = 'reset your password';
+        break;
+      case 'registration':
+      default:
+        purposeText = 'Registration';
+        purposeAction = 'complete your registration';
+        break;
+    }
 
     const html = `
     <!DOCTYPE html>
@@ -266,7 +281,7 @@ export class EmailService {
             <div class="instructions">
                 <strong>Instructions:</strong>
                 <ul style="margin: 10px 0 0 20px;">
-                    <li>Enter the 6-digit code above in the application</li>
+                    <li>Enter the 5-digit code above in the application</li>
                     <li>This code will expire in ${minutes} minutes</li>
                     <li>Do not share this code with anyone</li>
                 </ul>
@@ -296,7 +311,7 @@ We received a request to ${purposeAction}. Your verification code is:
 ${otpCode}
 
 Instructions:
-- Enter this 6-digit code in the application
+- Enter this 5-digit code in the application
 - This code will expire in ${minutes} minutes
 - Do not share this code with anyone
 

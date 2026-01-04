@@ -435,8 +435,8 @@ export class AuthService {
       throw new Error('User not found');
     }
 
-    // Generate 6-digit OTP code
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate 5-digit OTP code
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
     const otpId = crypto.randomUUID();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
