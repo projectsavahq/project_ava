@@ -67,7 +67,7 @@ const router = Router();
  *                   success: false
  *                   message: "User with this email already exists"
  */
-router.post('/signup', validate(authValidationSchemas.signup), authController.signup);
+router.post('/signup', validate(authValidationSchemas.signup), authController.signupWithOTP);
 
 /**
  * @swagger
