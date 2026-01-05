@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { authService } from '../services/authService';
+import { User } from '../models/schemas/User';
 
 export class AuthController {
   /**
@@ -38,7 +39,7 @@ export class AuthController {
         return;
       }
 
-       const { user } = await authService.signupWithOTP({
+      const { user } = await authService.signup({
         email,
         name,
         password
@@ -417,6 +418,35 @@ export class AuthController {
         success: false,
         message: 'Failed to retrieve profile'
       });
+    }
+  }
+
+  /**
+   * GET /auth/introspect
+   * Return authenticated user's profile without sensitive fields
+   */
+  async introspect(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Authentication required' });
+        return;
+      }
+
+      const user = await User.findOne({ userId })
+        .select(
+          'userId email name emailVerified lastLogin createdAt updatedAt preferences crisisHistory supportLevel isActive isSuspended suspensionReason suspendedAt'
+        )
+        .lean();
+
+      if (!user) {
+        res.status(404).json({ success: false, message: 'User not found' });
+        return;
+      }
+
+      res.json({ success: true, message: 'Token introspection successful', data: user });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Failed to introspect token' });
     }
   }
 

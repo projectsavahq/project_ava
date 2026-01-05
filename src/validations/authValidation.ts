@@ -59,11 +59,11 @@ const tokenSchema = Joi.string()
 
 // OTP code validation
 const otpCodeSchema = Joi.string()
-  .length(6)
-  .pattern(/^\d{6}$/)
+  .length(5)
+  .pattern(/^\d{5}$/)
   .required()
   .messages({
-    'string.length': 'OTP code must be exactly 6 digits',
+    'string.length': 'OTP code must be exactly 5 digits',
     'string.pattern.base': 'OTP code must contain only digits',
     'string.empty': 'OTP code is required',
   });
