@@ -67,7 +67,7 @@ const router = Router();
  *                   success: false
  *                   message: "User with this email already exists"
  */
-router.post('/signup', validate(authValidationSchemas.signup), authController.signup);
+router.post('/signup', validate(authValidationSchemas.signup), authController.signupWithOTP);
 
 /**
  * @swagger
@@ -498,6 +498,61 @@ router.get('/me', authMiddleware, authController.getProfile);
 
 /**
  * @swagger
+ * /api/auth/introspect:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Introspect token and return user profile
+ *     description: Returns the authenticated user's profile with sensitive fields removed.
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token introspected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Token introspection successful"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 name: "John Doe"
+ *                 emailVerified: true
+ *                 lastLogin: "2026-01-05T10:00:00.000Z"
+ *                 createdAt: "2026-01-01T10:00:00.000Z"
+ *                 updatedAt: "2026-01-05T10:30:00.000Z"
+ *                 preferences:
+ *                   voicePreference: "AVA-Default"
+ *                   language: "en-US"
+ *                 crisisHistory: false
+ *                 supportLevel: "basic"
+ *                 isActive: true
+ *                 isSuspended: false
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "Authentication required"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               message: "User not found"
+ */
+router.get('/introspect', authMiddleware, authController.introspect);
+
+/**
+ * @swagger
  * /api/auth/send-otp:
  *   post:
  *     tags: [Authentication]
@@ -567,7 +622,7 @@ router.post('/send-otp', authMiddleware, validate(authValidationSchemas.sendOTP)
  *             $ref: '#/components/schemas/OTPVerificationRequest'
  *           example:
  *             otpId: "123e4567-e89b-12d3-a456-426614174000"
- *             code: "123456"
+ *             code: "12345"
  *     responses:
  *       200:
  *         description: OTP verified successfully
@@ -609,70 +664,6 @@ router.post('/verify-otp', authMiddleware, validate(authValidationSchemas.verify
 
 /**
  * @swagger
- * /api/auth/signup-otp:
- *   post:
- *     tags: [Authentication]
- *     summary: Register a new user with OTP verification
- *     description: |
- *       Create a new user account with email and password, and send OTP to email for verification.
- *       Email verification is required before login.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/SignupRequest'
- *           example:
- *             email: "user@example.com"
- *             password: "securePassword123"
- *             name: "John Doe"
- *     responses:
- *       201:
- *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "User registered successfully. Please check your email for OTP verification."
- *               data:
- *                 userId: "123e4567-e89b-12d3-a456-426614174000"
- *                 email: "user@example.com"
- *                 name: "John Doe"
- *                 emailVerified: false
- *       400:
- *         description: Bad request - validation errors
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_fields:
- *                 summary: Missing required fields
- *                 value:
- *                   success: false
- *                   message: "Email and password are required"
- *               invalid_email:
- *                 summary: Invalid email format
- *                 value:
- *                   success: false
- *                   message: "Invalid email format"
- *               weak_password:
- *                 summary: Password too short
- *                 value:
- *                   success: false
- *                   message: "Password must be at least 8 characters long"
- *               user_exists:
- *                 summary: User already exists
- *                 value:
- *                   success: false
- *                   message: "User with this email already exists"
- */
-router.post('/signup-otp', validate(authValidationSchemas.signup), authController.signupWithOTP);
-
-/**
- * @swagger
  * /api/auth/verify-otp-registration:
  *   post:
  *     tags: [Authentication]
@@ -686,7 +677,7 @@ router.post('/signup-otp', validate(authValidationSchemas.signup), authControlle
  *             $ref: '#/components/schemas/OTPRegistrationVerificationRequest'
  *           example:
  *             email: "user@example.com"
- *             otpCode: "123456"
+ *             otpCode: "12345"
  *     responses:
  *       200:
  *         description: Email verified successfully
@@ -768,7 +759,7 @@ router.post('/request-password-reset-otp', validate(authValidationSchemas.reques
  *             $ref: '#/components/schemas/OTPPasswordResetRequest'
  *           example:
  *             email: "user@example.com"
- *             otpCode: "123456"
+ *             otpCode: "12345"
  *             newPassword: "newSecurePassword123"
  *     responses:
  *       200:

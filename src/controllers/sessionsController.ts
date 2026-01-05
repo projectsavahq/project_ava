@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import { Session, Message } from '../models/schemas';
 
 export class SessionsController {
@@ -51,10 +52,10 @@ export class SessionsController {
   }
 
   /**
-   * GET /api/sessions/:sessionId/messages
-   * Get messages for a session
+   * GET /api/sessions/:sessionId
+   * Get a session and all messages
    */
-  async getSessionMessages(req: Request, res: Response): Promise<void> {
+  async getSessionById(req: Request, res: Response): Promise<void> {
     try {
       const { sessionId } = req.params;
       const userId = req.user?.userId;
@@ -67,8 +68,7 @@ export class SessionsController {
         return;
       }
 
-      // Verify session belongs to user
-      const session = await Session.findOne({ sessionId, userId });
+      const session = await Session.findOne({ sessionId, userId }).select('-__v');
       if (!session) {
         res.status(404).json({
           success: false,
@@ -83,6 +83,73 @@ export class SessionsController {
 
       res.json({
         success: true,
+        message: 'Session retrieved successfully',
+        data: {
+          session,
+          messages
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve session'
+      });
+    }
+  }
+
+  /**
+   * GET /api/sessions/:sessionId/messages
+   * Get messages for a session with cursor pagination
+   */
+  async getSessionMessages(req: Request, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+      const { limit = 20, cursor } = req.query as { limit?: number; cursor?: string };
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+        return;
+      }
+
+      const session = await Session.findOne({ sessionId, userId });
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          message: 'Session not found'
+        });
+        return;
+      }
+
+      const query: Record<string, unknown> = { sessionId };
+      if (cursor) {
+        if (!Types.ObjectId.isValid(cursor)) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid cursor'
+          });
+          return;
+        }
+        query._id = { $gt: new Types.ObjectId(cursor) };
+      }
+
+      const messages = await Message.find(query)
+        .sort({ _id: 1 })
+        .limit(Number(limit) + 1)
+        .select('-__v');
+
+      const hasMore = messages.length > Number(limit);
+      if (hasMore) {
+        messages.pop();
+      }
+
+      const nextCursor = hasMore ? messages[messages.length - 1]?._id : null;
+
+      res.json({
+        success: true,
         message: 'Messages retrieved successfully',
         data: {
           session: {
@@ -92,7 +159,12 @@ export class SessionsController {
             status: session.status,
             duration: session.duration
           },
-          messages
+          messages,
+          pagination: {
+            limit: Number(limit),
+            nextCursor,
+            hasMore
+          }
         }
       });
     } catch (error) {
