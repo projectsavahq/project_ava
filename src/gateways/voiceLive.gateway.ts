@@ -287,13 +287,9 @@ export class VoiceLiveGateway {
         return;
       }
 
-      // Convert audio to Buffer if it's a string
-      const audioBuffer = typeof data.audio === 'string'
-        ? Buffer.from(data.audio, 'base64')
-        : data.audio;
-
-      // Send to Azure via service
-      sessionEntry.service.sendAudio(audioBuffer);
+      // Pass audio data to service (string or Buffer)
+      // Optimization: If it's already a base64 string, pass it directly to avoid Buffer conversion overhead
+      sessionEntry.service.sendAudio(data.audio);
 
       // Reset session timeout
       sessionEntry.service.resetSessionTimeout();
@@ -369,15 +365,8 @@ export class VoiceLiveGateway {
       const sid = sessionEntry.service['state'].sessionId!;
       logInfo(`[VoiceLiveGateway] User-initiated disconnect for session: ${sid}`);
 
-      // Cancel any pending cleanup timers and perform immediate cleanup
-      const pending = this.pendingDisconnects.get(sid);
-      if (pending) {
-        clearTimeout(pending);
-        this.pendingDisconnects.delete(sid);
-      }
-
       sessionEntry.service.disconnect();
-      this.activeSessions.delete(sid);
+      this.cleanupSession(sid);
     }
   }
 
@@ -414,9 +403,9 @@ export class VoiceLiveGateway {
               logError(`[VoiceLiveGateway] Failed to update session ${sessionId} during grace cleanup`, dbError);
             }
 
-            this.activeSessions.delete(sessionId);
-          } finally {
-            this.pendingDisconnects.delete(sessionId);
+            this.cleanupSession(sessionId);
+          } catch (error) {
+            logError(`[VoiceLiveGateway] Error during session cleanup`, error);
           }
         }, this.reconnectGraceMs);
 
@@ -668,7 +657,7 @@ export class VoiceLiveGateway {
         logError(`[VoiceLiveGateway] Failed to update session ${sessionId} in database`, dbError);
       }
 
-      this.activeSessions.delete(sessionId);
+      this.cleanupSession(sessionId);
     }
   }
 
@@ -691,6 +680,30 @@ export class VoiceLiveGateway {
    */
   public getActiveSessionCount(): number {
     return this.activeSessions.size;
+  }
+
+  /**
+   * EXPLANATION: Clean up a specific session and its resources
+   */
+  private cleanupSession(sessionId: string): void {
+    // Remove from active sessions
+    this.activeSessions.delete(sessionId);
+
+    // Remove pending disconnect timeout
+    const pending = this.pendingDisconnects.get(sessionId);
+    if (pending) {
+      clearTimeout(pending);
+      this.pendingDisconnects.delete(sessionId);
+    }
+
+    // Clean up assistant messages for this session
+    for (const key of this.assistantMessages.keys()) {
+      if (key.startsWith(`${sessionId}_`)) {
+        this.assistantMessages.delete(key);
+      }
+    }
+    
+    // logInfo(`[VoiceLiveGateway] Cleaned up resources for session ${sessionId}`);
   }
 
   /**

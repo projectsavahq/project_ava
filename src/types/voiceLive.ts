@@ -338,7 +338,6 @@ export interface VoiceLiveClientState {
   userId?: string;
   websocketUrl?: string;
   authHeaders?: Record<string, string>;
-  messageQueue: AzureVoiceLiveMessage[];
   lastMessageAt?: Date;
   reconnectAttempts: number;
 }

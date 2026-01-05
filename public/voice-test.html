@@ -375,9 +375,9 @@
         </div>
     </div>
 
-    <!-- load socket.io (server-hosted first, CDN fallback) -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- load socket.io (CDN for standalone testing) -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <!-- Externalized JS to avoid inline script CSP blocks -->
-    <script src="/voice-test.js" defer></script>
+    <script src="voice-test.js" defer></script>
 </body>
 </html>
