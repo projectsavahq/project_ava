@@ -38,7 +38,6 @@ export class VoiceLiveService extends EventEmitter {
 
     this.state = {
       connectionStatus: 'disconnected',
-      messageQueue: [],
       reconnectAttempts: 0
     };
   }
@@ -136,15 +135,17 @@ export class VoiceLiveService extends EventEmitter {
   /**
    * EXPLANATION: Send audio data to Azure
    */
-  sendAudio(audioBuffer: Buffer): void {
+  sendAudio(audioData: Buffer | string): void {
     if (this.state.connectionStatus !== 'connected' || !this.ws) {
       logWarn(`[VoiceLiveService] Cannot send audio - not connected`);
       return;
     }
 
     try {
-      // Convert to base64
-      const base64Audio = audioBuffer.toString('base64');
+      // Use provided string if it's already base64, otherwise convert buffer
+      const base64Audio = typeof audioData === 'string' 
+        ? audioData 
+        : audioData.toString('base64');
 
       const message = {
         type: 'input_audio_buffer.append',

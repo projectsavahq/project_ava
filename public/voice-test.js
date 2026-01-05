@@ -3,9 +3,12 @@
 // voice-test.js - externalized client logic to satisfy CSP (no inline scripts)
 
 // Use origin where the page is served so login/fetch calls go to the same backend port (e.g. 3002)
-const API_BASE = (window.location && window.location.origin && window.location.origin !== 'null')
-    ? window.location.origin
-    : 'http://localhost:3002';
+// If running on Live Server (port 5500), point to default backend port 3001
+const API_BASE = (window.location.port === '5500') 
+    ? 'http://localhost:3001'
+    : (window.location && window.location.origin && window.location.origin !== 'null')
+        ? window.location.origin
+        : 'http://localhost:3001';
 
 console.info('[voice-test.js] loaded; API_BASE =', API_BASE);
 
@@ -246,7 +249,7 @@ function init() {
                 let usingWorklet = false;
                 try {
                     if (audioCtx.audioWorklet) {
-                        await audioCtx.audioWorklet.addModule('/audio-processor.js');
+                        await audioCtx.audioWorklet.addModule('audio-processor.js');
                         workletNode = new AudioWorkletNode(audioCtx, 'audio-processor');
 
                         workletNode.port.onmessage = (event) => {
