@@ -71,7 +71,7 @@ export class UsersController {
 
       res.json({
         message: "User deactivated successfully",
-        userId: deactivatedUser.userId,
+        id: deactivatedUser.id,
         isActive: deactivatedUser.isActive,
       });
     } catch (error) {

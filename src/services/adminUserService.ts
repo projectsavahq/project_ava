@@ -82,7 +82,7 @@ export class AdminUserService {
    */
   async getUserById(userId: string): Promise<IUser> {
     try {
-      const user = await User.findOne({ userId })
+      const user = await User.findById(userId)
         .select('-password -passwordHistory -emailVerificationToken -passwordResetToken');
 
       if (!user) {
@@ -112,7 +112,7 @@ export class AdminUserService {
         throw new Error('Note cannot exceed 1000 characters');
       }
 
-      const user = await User.findOne({ userId });
+      const user = await User.findById(userId);
       if (!user) {
         throw new Error('User not found');
       }
@@ -147,7 +147,7 @@ export class AdminUserService {
         throw new Error('Suspension reason is required');
       }
 
-      const user = await User.findOne({ userId });
+      const user = await User.findById(userId);
       if (!user) {
         throw new Error('User not found');
       }
@@ -178,7 +178,7 @@ export class AdminUserService {
    */
   async unsuspendUser(userId: string): Promise<IUser> {
     try {
-      const user = await User.findOne({ userId });
+      const user = await User.findById(userId);
       if (!user) {
         throw new Error('User not found');
       }

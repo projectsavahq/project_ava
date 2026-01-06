@@ -48,7 +48,7 @@ export class AuthController {
         success: true,
         message: 'User registered successfully. Please check your email for verification.',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           emailVerified: user.emailVerified
@@ -84,7 +84,7 @@ export class AuthController {
         success: true,
         message: 'Email verified successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           emailVerified: user.emailVerified
         }
@@ -146,7 +146,7 @@ export class AuthController {
   async setPassword(req: Request, res: Response): Promise<void> {
     try {
       const { newPassword, currentPassword } = req.body;
-      const userId = req.user?.userId; // Assuming auth middleware sets req.user
+      const userId = req.user?._id?.toString(); // Assuming auth middleware sets req.user
 
       if (!userId) {
         res.status(401).json({
@@ -323,7 +323,7 @@ export class AuthController {
   async sendOTP(req: Request, res: Response): Promise<void> {
     try {
       const { phone } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         res.status(401).json({
@@ -405,7 +405,7 @@ export class AuthController {
         success: true,
         message: 'Profile retrieved successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           emailVerified: user.emailVerified,
@@ -427,15 +427,15 @@ export class AuthController {
    */
   async introspect(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
       if (!userId) {
         res.status(401).json({ success: false, message: 'Authentication required' });
         return;
       }
 
-      const user = await User.findOne({ userId })
+      const user = await User.findById(userId)
         .select(
-          'userId email name emailVerified lastLogin createdAt updatedAt preferences crisisHistory supportLevel isActive isSuspended suspensionReason suspendedAt'
+          'email name emailVerified lastLogin createdAt updatedAt preferences crisisHistory supportLevel isActive isSuspended suspensionReason suspendedAt'
         )
         .lean();
 
@@ -456,7 +456,7 @@ export class AuthController {
    */
   async updateProfile(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -476,7 +476,7 @@ export class AuthController {
         success: true,
         message: 'Profile updated successfully',
         data: {
-          userId: updatedUser.userId,
+          id: updatedUser._id.toString(),
           email: updatedUser.email,
           name: updatedUser.name,
           preferences: updatedUser.preferences
@@ -533,7 +533,7 @@ export class AuthController {
         success: true,
         message: 'User registered successfully. Please check your email for OTP verification.',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           emailVerified: user.emailVerified
@@ -569,7 +569,7 @@ export class AuthController {
         success: true,
         message: 'Email verified successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           name: user.name,
           emailVerified: user.emailVerified

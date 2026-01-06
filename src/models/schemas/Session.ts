@@ -1,8 +1,7 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface ISession extends Document {
-  sessionId: string;
-  userId: string;
+  userId: Types.ObjectId;
   startTime: Date;
   endTime?: Date;
   status: "active" | "ended" | "error";
@@ -13,8 +12,7 @@ export interface ISession extends Document {
 
 const SessionSchema = new Schema<ISession>(
   {
-    sessionId: { type: String, required: true, unique: true, index: true },
-    userId: { type: String, required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     startTime: { type: Date, default: Date.now, index: true },
     endTime: { type: Date },
     status: {

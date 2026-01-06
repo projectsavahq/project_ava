@@ -64,7 +64,6 @@ export class AuthService {
 
     // Create user with password history
     const user = new User({
-      userId: crypto.randomUUID(),
       email: email.toLowerCase(),
       name,
       password: hashedPassword,
@@ -185,7 +184,7 @@ export class AuthService {
 
     return {
       user: {
-        id: user.userId,
+        id: user._id.toString(),
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified
@@ -200,7 +199,7 @@ export class AuthService {
   async setPassword(userId: string, newPassword: string, currentPassword?: string): Promise<void> {
     logInfo(`AUTH: Password change attempt for user: ${userId}`);
     
-    const user = await User.findOne({ userId });
+    const user = await User.findById(userId);
     if (!user) {
       logError(`AUTH: Password change failed - user not found: ${userId}`);
       throw new Error('User not found');
@@ -260,7 +259,7 @@ export class AuthService {
     
     try {
       const payload = jwt.verify(refreshToken, this.REFRESH_SECRET) as any;
-      const user = await User.findOne({ userId: payload.userId });
+      const user = await User.findById(payload.userId);
 
       if (!user || !user.emailVerified) {
         logAuth.tokenRefresh('unknown', false);
@@ -373,7 +372,7 @@ export class AuthService {
   async validateToken(token: string): Promise<IUser> {
     try {
       const payload = jwt.verify(token, this.JWT_SECRET) as any;
-      const user = await User.findOne({ userId: payload.userId });
+      const user = await User.findById(payload.userId);
 
       if (!user || !user.emailVerified) {
         logWarn(`AUTH: Token validation failed - invalid token or unverified user`);
@@ -392,7 +391,7 @@ export class AuthService {
    */
   private generateTokens(user: IUser): AuthTokens {
     const payload = {
-      userId: user.userId,
+      userId: user._id.toString(),
       email: user.email
     };
 
@@ -433,18 +432,16 @@ export class AuthService {
    * Send OTP for additional security
    */
   async sendOTP(userId: string, phone?: string): Promise<{ otpId: string }> {
-    const user = await User.findOne({ userId });
+    const user = await User.findById(userId);
     if (!user) {
       throw new Error('User not found');
     }
 
     // Generate 5-digit OTP code
     const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
-    const otpId = crypto.randomUUID();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Store OTP details in user
-    user.otpId = otpId;
     user.otpCode = otpCode;
     user.otpExpires = otpExpires;
     await user.save();
@@ -453,14 +450,14 @@ export class AuthService {
     // For now, log the code (in production, send via SMS)
     console.log(`OTP for user ${userId}: ${otpCode} (expires at ${otpExpires})`);
 
-    return { otpId };
+    return { otpId: user._id.toString() };
   }
 
   /**
    * Verify OTP
    */
   async verifyOTP(otpId: string, code: string): Promise<boolean> {
-    const user = await User.findOne({ otpId });
+    const user = await User.findById(otpId);
     if (!user || !user.otpCode || !user.otpExpires) {
       return false;
     }
@@ -468,7 +465,6 @@ export class AuthService {
     // Check if expired
     if (user.otpExpires < new Date()) {
       // Clear expired OTP
-      user.otpId = undefined;
       user.otpCode = undefined;
       user.otpExpires = undefined;
       await user.save();
@@ -481,7 +477,6 @@ export class AuthService {
     }
 
     // Clear OTP on successful verification
-    user.otpId = undefined;
     user.otpCode = undefined;
     user.otpExpires = undefined;
     await user.save();
@@ -514,7 +509,6 @@ export class AuthService {
 
     // Create user with OTP and password history
     const user = new User({
-      userId: crypto.randomUUID(),
       email: email.toLowerCase(),
       name,
       password: hashedPassword,
@@ -715,7 +709,7 @@ export class AuthService {
   async updateUserProfile(userId: string, updateData: { name?: string; preferences?: any }): Promise<IUser> {
     logInfo(`AUTH: Updating profile for user: ${userId}`);
     
-    const user = await User.findOne({ userId });
+    const user = await User.findById(userId);
     if (!user) {
       logError(`AUTH: Profile update failed - user not found: ${userId}`);
       throw new Error('User not found');
@@ -862,7 +856,6 @@ export class AuthService {
 
     // Create admin with OTP
     const admin = new Admin({
-      adminId: crypto.randomUUID(),
       email: email.toLowerCase(),
       name,
       password: hashedPassword,
@@ -940,13 +933,13 @@ export class AuthService {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { adminId: admin.adminId, email: admin.email, role: 'admin' },
+      { adminId: admin._id.toString(), email: admin.email, role: 'admin' },
       this.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
     const refreshToken = jwt.sign(
-      { adminId: admin.adminId, email: admin.email, role: 'admin' },
+      { adminId: admin._id.toString(), email: admin.email, role: 'admin' },
       this.REFRESH_SECRET,
       { expiresIn: '7d' }
     );
@@ -955,7 +948,7 @@ export class AuthService {
 
     return {
       user: {
-        id: admin.adminId,
+        id: admin._id.toString(),
         email: admin.email,
         name: admin.name,
         emailVerified: admin.emailVerified
