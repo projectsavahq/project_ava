@@ -9,7 +9,7 @@ export class SessionsController {
    */
   async getUserSessions(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -58,7 +58,7 @@ export class SessionsController {
   async getSessionById(req: Request, res: Response): Promise<void> {
     try {
       const { sessionId } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         res.status(401).json({
@@ -105,7 +105,7 @@ export class SessionsController {
     try {
       const { sessionId } = req.params;
       const { limit = 20, cursor } = req.query as { limit?: number; cursor?: string };
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
 
       if (!userId) {
         res.status(401).json({
@@ -153,7 +153,7 @@ export class SessionsController {
         message: 'Messages retrieved successfully',
         data: {
           session: {
-            sessionId: session.sessionId,
+            id: session._id.toString(),
             startTime: session.startTime,
             endTime: session.endTime,
             status: session.status,
@@ -181,7 +181,7 @@ export class SessionsController {
    */
   async getSessionStats(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?._id?.toString();
       if (!userId) {
         res.status(401).json({
           success: false,

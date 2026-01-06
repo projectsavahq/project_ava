@@ -1,7 +1,7 @@
 import { User, IUser } from "../models/schemas";
 
 export interface UserProfileResponse {
-  userId: string;
+  id: string;
   email?: string;
   preferences: any;
   supportLevel: string;
@@ -41,12 +41,10 @@ export class UsersService {
    * Create a new user
    */
   async createUser(userData: {
-    userId: string;
     email?: string;
     preferences?: any;
   }): Promise<IUser> {
     const user = new User({
-      userId: userData.userId,
       email: userData.email,
       preferences: {
         voicePreference: "AVA-Default",
@@ -70,13 +68,13 @@ export class UsersService {
    * Get user profile by userId
    */
   async getUserProfile(userId: string): Promise<UserProfileResponse | null> {
-    const user = await User.findOne({ userId }).lean();
+    const user = await User.findById(userId).lean();
     if (!user) {
       return null;
     }
 
     return {
-      userId: user.userId,
+      id: user._id.toString(),
       email: user.email,
       preferences: user.preferences,
       supportLevel: user.supportLevel,
@@ -100,13 +98,12 @@ export class UsersService {
   async updateUserProfile(userId: string, updates: any): Promise<UserProfileResponse | null> {
     // Don't allow updating sensitive fields
     const sanitizedUpdates = { ...updates };
-    delete sanitizedUpdates.userId;
     delete sanitizedUpdates._id;
     delete sanitizedUpdates.crisisHistory;
     delete sanitizedUpdates.createdAt;
 
-    const updatedUser = await User.findOneAndUpdate(
-      { userId },
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
       { ...sanitizedUpdates, updatedAt: new Date() },
       { new: true }
     ).lean();
@@ -116,7 +113,7 @@ export class UsersService {
     }
 
     return {
-      userId: updatedUser.userId,
+      id: updatedUser._id.toString(),
       email: updatedUser.email,
       preferences: updatedUser.preferences,
       supportLevel: updatedUser.supportLevel,
@@ -135,9 +132,9 @@ export class UsersService {
   /**
    * Deactivate user (soft delete)
    */
-  async deactivateUser(userId: string): Promise<Pick<IUser, 'userId' | 'isActive'> | null> {
-    const deactivatedUser = await User.findOneAndUpdate(
-      { userId },
+  async deactivateUser(userId: string): Promise<{ id: string; isActive: boolean } | null> {
+    const deactivatedUser = await User.findByIdAndUpdate(
+      userId,
       { isActive: false, updatedAt: new Date() },
       { new: true }
     ).lean();
@@ -147,7 +144,7 @@ export class UsersService {
     }
 
     return {
-      userId: deactivatedUser.userId,
+      id: deactivatedUser._id.toString(),
       isActive: deactivatedUser.isActive,
     };
   }

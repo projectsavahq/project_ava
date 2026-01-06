@@ -211,7 +211,6 @@ export class VoiceLiveGateway {
       // Save session to database
       try {
         await Session.create({
-          sessionId: finalSessionId,
           userId,
           status: 'active',
           startTime: new Date(), // ensure start time is set for duration calculations

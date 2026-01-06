@@ -49,7 +49,7 @@ export class AdminController {
         success: true,
         message: 'Admin registered successfully. Please check your email for OTP verification.',
         data: {
-          adminId: admin.adminId,
+          id: admin._id.toString(),
           email: admin.email,
           name: admin.name,
           emailVerified: admin.emailVerified
@@ -145,7 +145,7 @@ export class AdminController {
         success: true,
         message: 'Admin email verified successfully',
         data: {
-          adminId: admin.adminId,
+          id: admin._id.toString(),
           email: admin.email,
           emailVerified: admin.emailVerified
         }
@@ -180,7 +180,7 @@ export class AdminController {
         success: true,
         message: 'Email verified successfully',
         data: {
-          adminId: admin.adminId,
+          id: admin._id.toString(),
           email: admin.email,
           name: admin.name,
           emailVerified: admin.emailVerified
@@ -343,7 +343,7 @@ export class AdminController {
         success: true,
         message: 'Admin note added successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           noteAdded: user.adminNotes[user.adminNotes.length - 1],
           totalNotes: user.adminNotes.length
         }
@@ -404,7 +404,7 @@ export class AdminController {
         success: true,
         message: 'User suspended successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           isSuspended: user.isSuspended,
           suspensionReason: user.suspensionReason,
@@ -460,7 +460,7 @@ export class AdminController {
         success: true,
         message: 'User unsuspended successfully',
         data: {
-          userId: user.userId,
+          id: user._id.toString(),
           email: user.email,
           isSuspended: user.isSuspended,
           isActive: user.isActive

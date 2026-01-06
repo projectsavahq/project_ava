@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
-  userId: string;
   email: string;
   name?: string;
   password?: string;
@@ -15,7 +14,6 @@ export interface IUser extends Document {
     password: string;
     createdAt: Date;
   }>;
-  otpId?: string;
   otpCode?: string;
   otpExpires?: Date;
   lastLogin?: Date;
@@ -55,7 +53,6 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
-    userId: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     name: { type: String },
     password: { type: String },
@@ -71,7 +68,6 @@ const UserSchema = new Schema<IUser>(
         createdAt: { type: Date, default: Date.now },
       },
     ],
-    otpId: { type: String },
     otpCode: { type: String },
     otpExpires: { type: Date },
     lastLogin: { type: Date },
