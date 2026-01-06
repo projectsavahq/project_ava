@@ -71,47 +71,6 @@ router.post('/signup', validate(authValidationSchemas.signup), authController.si
 
 /**
  * @swagger
- * /api/auth/verify-email:
- *   post:
- *     tags: [Authentication]
- *     summary: Verify user email address
- *     description: Verify user's email address using the verification token sent during signup.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/EmailVerificationRequest'
- *           example:
- *             token: "abc123def456ghi789"
- *     responses:
- *       200:
- *         description: Email verified successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Email verified successfully"
- *               data:
- *                 userId: "123e4567-e89b-12d3-a456-426614174000"
- *                 email: "user@example.com"
- *                 emailVerified: true
- *       400:
- *         description: Invalid or expired verification token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Invalid or expired verification token"
- */
-router.post('/verify-email', validate(authValidationSchemas.verifyEmail), authController.verifyEmail);
-
-/**
- * @swagger
  * /api/auth/login:
  *   post:
  *     tags: [Authentication]
@@ -191,150 +150,6 @@ router.post('/login', validate(authValidationSchemas.login), authController.logi
 
 /**
  * @swagger
- * /api/auth/refresh-token:
- *   post:
- *     tags: [Authentication]
- *     summary: Refresh access token
- *     description: |
- *       Get a new access token using the refresh token stored in httpOnly cookie.
- *       Access tokens expire in 15 minutes, refresh tokens expire in 7 days.
- *     responses:
- *       200:
- *         description: Token refreshed successfully
- *         headers:
- *           Set-Cookie:
- *             description: New refresh token (httpOnly)
- *             schema:
- *               type: string
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Token refreshed successfully"
- *               data:
- *                 accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *       401:
- *         description: Invalid or missing refresh token
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               no_token:
- *                 summary: Refresh token not found
- *                 value:
- *                   success: false
- *                   message: "Refresh token not found"
- *               invalid_token:
- *                 summary: Invalid refresh token
- *                 value:
- *                   success: false
- *                   message: "Invalid refresh token"
- */
-router.post('/refresh-token', authController.refreshToken);
-/**
- * @swagger
- * /api/auth/forgot-password:
- *   post:
- *     tags: [Authentication]
- *     summary: Request password reset
- *     description: |
- *       Send a password reset token to the user's email address.
- *       For security, the response is the same whether the email exists or not.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ForgotPasswordRequest'
- *           example:
- *             email: "user@example.com"
- *     responses:
- *       200:
- *         description: Password reset request processed
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "If this email exists, a password reset link has been sent."
- *               data:
- *                 resetToken: "abc123def456ghi789" # Only in development
- *       400:
- *         description: Bad request - missing email
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Email is required"
- */
-router.post('/forgot-password', validate(authValidationSchemas.forgotPassword), authController.forgotPassword);
-
-/**
- * @swagger
- * /api/auth/reset-password:
- *   post:
- *     tags: [Authentication]
- *     summary: Reset password with token
- *     description: |
- *       Reset user's password using the reset token sent via email.
- *       Token expires in 1 hour. Password cannot be one of the last 5 used passwords.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ResetPasswordRequest'
- *           example:
- *             token: "abc123def456ghi789"
- *             newPassword: "newSecurePassword123"
- *     responses:
- *       200:
- *         description: Password reset successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Password reset successfully"
- *       400:
- *         description: Bad request - validation errors
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_fields:
- *                 summary: Missing required fields
- *                 value:
- *                   success: false
- *                   message: "Reset token and new password are required"
- *               weak_password:
- *                 summary: Password too short
- *                 value:
- *                   success: false
- *                   message: "Password must be at least 8 characters long"
- *               invalid_token:
- *                 summary: Invalid or expired token
- *                 value:
- *                   success: false
- *                   message: "Invalid or expired reset token"
- *               password_reuse:
- *                 summary: Password recently used
- *                 value:
- *                   success: false
- *                   message: "Cannot reuse recent passwords"
- */
-router.post('/reset-password', validate(authValidationSchemas.resetPassword), authController.resetPassword);
-
-/**
- * @swagger
  * /api/auth/logout:
  *   post:
  *     tags: [Authentication]
@@ -367,83 +182,6 @@ router.post('/reset-password', validate(authValidationSchemas.resetPassword), au
  *               message: "Logout failed"
  */
 router.post('/logout', authController.logout);
-
-/**
- * @swagger
- * /api/auth/set-password:
- *   post:
- *     tags: [Authentication]
- *     summary: Set or update user password
- *     description: |
- *       Set a new password or update existing password.
- *       When updating, current password must be provided.
- *       New password cannot be one of the last 5 used passwords.
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/PasswordSetRequest'
- *           examples:
- *             new_password:
- *               summary: Setting password for the first time
- *               value:
- *                 newPassword: "securePassword123"
- *             update_password:
- *               summary: Updating existing password
- *               value:
- *                 newPassword: "newSecurePassword123"
- *                 currentPassword: "oldSecurePassword123"
- *     responses:
- *       200:
- *         description: Password set successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Password set successfully"
- *       400:
- *         description: Bad request - validation errors
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_password:
- *                 summary: Missing new password
- *                 value:
- *                   success: false
- *                   message: "New password is required"
- *               weak_password:
- *                 summary: Password too short
- *                 value:
- *                   success: false
- *                   message: "Password must be at least 8 characters long"
- *               wrong_current:
- *                 summary: Current password incorrect
- *                 value:
- *                   success: false
- *                   message: "Current password is incorrect"
- *               password_reuse:
- *                 summary: Password recently used
- *                 value:
- *                   success: false
- *                   message: "Cannot reuse recent passwords"
- *       401:
- *         description: Authentication required
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Authentication required"
- */
-router.post('/set-password', authMiddleware, validate(authValidationSchemas.setPassword), authController.setPassword);
 
 /**
  * @swagger
@@ -553,65 +291,11 @@ router.get('/introspect', authMiddleware, authController.introspect);
 
 /**
  * @swagger
- * /api/auth/send-otp:
- *   post:
+ * /api/auth/update-profile:
+ *   patch:
  *     tags: [Authentication]
- *     summary: Send OTP for additional security
- *     description: |
- *       Send a one-time password (OTP) via SMS for additional security verification.
- *       Integrates with Clark OTP service.
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/OTPRequest'
- *           example:
- *             phone: "+1234567890"
- *     responses:
- *       200:
- *         description: OTP sent successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "OTP sent successfully"
- *               data:
- *                 otpId: "123e4567-e89b-12d3-a456-426614174000"
- *       400:
- *         description: Bad request - OTP send failed
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "OTP send failed"
- *       401:
- *         description: Authentication required
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               message: "Authentication required"
- */
-router.post('/send-otp', authMiddleware, validate(authValidationSchemas.sendOTP), authController.sendOTP);
-
-/**
- * @swagger
- * /api/auth/verify-otp:
- *   post:
- *     tags: [Authentication]
- *     summary: Verify OTP code
- *     description: |
- *       Verify the one-time password (OTP) code sent via SMS.
- *       Used for additional security verification.
+ *     summary: Update user profile
+ *     description: Update the authenticated user's profile information (name, preferences, etc.).
  *     security:
  *       - BearerAuth: []
  *     requestBody:
@@ -619,37 +303,38 @@ router.post('/send-otp', authMiddleware, validate(authValidationSchemas.sendOTP)
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/OTPVerificationRequest'
+ *             $ref: '#/components/schemas/UpdateProfileRequest'
  *           example:
- *             otpId: "123e4567-e89b-12d3-a456-426614174000"
- *             code: "12345"
+ *             name: "John Doe Updated"
+ *             preferences:
+ *               voicePreference: "AVA-Female"
+ *               language: "en-GB"
  *     responses:
  *       200:
- *         description: OTP verified successfully
+ *         description: Profile updated successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessResponse'
  *             example:
  *               success: true
- *               message: "OTP verified successfully"
+ *               message: "Profile updated successfully"
+ *               data:
+ *                 userId: "123e4567-e89b-12d3-a456-426614174000"
+ *                 email: "user@example.com"
+ *                 name: "John Doe Updated"
+ *                 preferences:
+ *                   voicePreference: "AVA-Female"
+ *                   language: "en-GB"
  *       400:
  *         description: Bad request - validation errors
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_fields:
- *                 summary: Missing required fields
- *                 value:
- *                   success: false
- *                   message: "OTP ID and code are required"
- *               invalid_code:
- *                 summary: Invalid OTP code
- *                 value:
- *                   success: false
- *                   message: "Invalid OTP code"
+ *             example:
+ *               success: false
+ *               message: "Invalid profile data"
  *       401:
  *         description: Authentication required
  *         content:
@@ -660,7 +345,7 @@ router.post('/send-otp', authMiddleware, validate(authValidationSchemas.sendOTP)
  *               success: false
  *               message: "Authentication required"
  */
-router.post('/verify-otp', authMiddleware, validate(authValidationSchemas.verifyOTP), authController.verifyOTP);
+router.patch('/update-profile', authMiddleware, validate(authValidationSchemas.updateProfile), authController.updateProfile);
 
 /**
  * @swagger
@@ -707,6 +392,56 @@ router.post('/verify-otp-registration', validate(authValidationSchemas.verifyOTP
 
 /**
  * @swagger
+ * /api/auth/resend-verification-email:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Resend email verification OTP
+ *     description: Resend the OTP code to the user's email for verification.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResendVerificationRequest'
+ *           example:
+ *             email: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Verification email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Verification OTP has been sent to your email."
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_email:
+ *                 summary: Missing email
+ *                 value:
+ *                   success: false
+ *                   message: "Email is required"
+ *               already_verified:
+ *                 summary: Email already verified
+ *                 value:
+ *                   success: false
+ *                   message: "Email is already verified"
+ *               user_not_found:
+ *                 summary: User not found
+ *                 value:
+ *                   success: false
+ *                   message: "User not found"
+ */
+router.post('/resend-verification-email', validate(authValidationSchemas.resendVerification), authController.resendVerificationEmail);
+
+/**
+ * @swagger
  * /api/auth/request-password-reset-otp:
  *   post:
  *     tags: [Authentication]
@@ -747,30 +482,31 @@ router.post('/request-password-reset-otp', validate(authValidationSchemas.reques
  * /api/auth/verify-otp-password-reset:
  *   post:
  *     tags: [Authentication]
- *     summary: Verify OTP and reset password
+ *     summary: Verify OTP for password reset
  *     description: |
- *       Verify the OTP and reset the user's password.
- *       OTP expires in 5 minutes. Password cannot be one of the last 5 used passwords.
+ *       Verify the OTP code for password reset. After verification, use the create-password endpoint to set a new password.
+ *       OTP expires in 5 minutes.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/OTPPasswordResetRequest'
+ *             $ref: '#/components/schemas/OTPPasswordResetVerificationRequest'
  *           example:
  *             email: "user@example.com"
  *             otpCode: "12345"
- *             newPassword: "newSecurePassword123"
  *     responses:
  *       200:
- *         description: Password reset successfully
+ *         description: OTP verified successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessResponse'
  *             example:
  *               success: true
- *               message: "Password reset successfully"
+ *               message: "OTP verified successfully. You can now set your new password."
+ *               data:
+ *                 resetToken: "temp-token-for-password-reset"
  *       400:
  *         description: Bad request - validation errors
  *         content:
@@ -782,23 +518,71 @@ router.post('/request-password-reset-otp', validate(authValidationSchemas.reques
  *                 summary: Missing required fields
  *                 value:
  *                   success: false
- *                   message: "Email, OTP code, and new password are required"
- *               weak_password:
- *                 summary: Password too short
- *                 value:
- *                   success: false
- *                   message: "Password must be at least 8 characters long"
+ *                   message: "Email and OTP code are required"
  *               invalid_otp:
  *                 summary: Invalid or expired OTP
  *                 value:
  *                   success: false
  *                   message: "Invalid or expired OTP"
+ */
+router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyOTPPasswordReset), authController.verifyOTPPasswordReset);
+
+/**
+ * @swagger
+ * /api/auth/set-password:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Set new password after OTP verification
+ *     description: |
+ *       Set a new password after OTP verification. Requires the reset token from OTP verification.
+ *       Password cannot be one of the last 4 used passwords.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SetPasswordRequest'
+ *           example:
+ *             resetToken: "temp-token-for-password-reset"
+ *             newPassword: "newSecurePassword123"
+ *     responses:
+ *       200:
+ *         description: Password set successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *             example:
+ *               success: true
+ *               message: "Password set successfully"
+ *       400:
+ *         description: Bad request - validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_fields:
+ *                 summary: Missing required fields
+ *                 value:
+ *                   success: false
+ *                   message: "Reset token and new password are required"
+ *               weak_password:
+ *                 summary: Password too short
+ *                 value:
+ *                   success: false
+ *                   message: "Password must be at least 8 characters long"
+ *               invalid_token:
+ *                 summary: Invalid or expired token
+ *                 value:
+ *                   success: false
+ *                   message: "Invalid or expired reset token"
  *               password_reuse:
  *                 summary: Password recently used
  *                 value:
  *                   success: false
  *                   message: "Cannot reuse recent passwords"
  */
-router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyOTPPasswordReset), authController.verifyOTPPasswordReset);
+router.post('/set-password', validate(authValidationSchemas.setPasswordWithToken), authController.setPasswordWithToken);
 
 export default router;
