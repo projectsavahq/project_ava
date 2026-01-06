@@ -451,6 +451,46 @@ export class AuthController {
   }
 
   /**
+   * PATCH /auth/update-profile
+   * Update user profile
+   */
+  async updateProfile(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+        return;
+      }
+
+      const { name, preferences } = req.body;
+
+      const updatedUser = await authService.updateUserProfile(userId, {
+        name,
+        preferences
+      });
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+          userId: updatedUser.userId,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          preferences: updatedUser.preferences
+        }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Profile update failed'
+      });
+    }
+  }
+
+  /**
    * POST /auth/signup-otp
    * Register a new user with OTP verification
    */
@@ -544,6 +584,36 @@ export class AuthController {
   }
 
   /**
+   * POST /auth/resend-verification-email
+   * Resend email verification OTP
+   */
+  async resendVerificationEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+        return;
+      }
+
+      await authService.resendVerificationEmail(email);
+
+      res.json({
+        success: true,
+        message: 'Verification OTP has been sent to your email.'
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to resend verification email'
+      });
+    }
+  }
+
+  /**
    * POST /auth/request-password-reset-otp
    * Request OTP for password reset
    */
@@ -575,16 +645,47 @@ export class AuthController {
 
   /**
    * POST /auth/verify-otp-password-reset
-   * Verify OTP and reset password
+   * Verify OTP for password reset (without setting password)
    */
   async verifyOTPPasswordReset(req: Request, res: Response): Promise<void> {
     try {
-      const { email, otpCode, newPassword } = req.body;
+      const { email, otpCode } = req.body;
 
-      if (!email || !otpCode || !newPassword) {
+      if (!email || !otpCode) {
         res.status(400).json({
           success: false,
-          message: 'Email, OTP code, and new password are required'
+          message: 'Email and OTP code are required'
+        });
+        return;
+      }
+
+      const resetToken = await authService.verifyOTPForPasswordReset(email, otpCode);
+
+      res.json({
+        success: true,
+        message: 'OTP verified successfully. You can now set your new password.',
+        data: { resetToken }
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'OTP verification failed'
+      });
+    }
+  }
+
+  /**
+   * POST /auth/create-password
+   * Create new password after OTP verification
+   */
+  async createPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { resetToken, newPassword } = req.body;
+
+      if (!resetToken || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Reset token and new password are required'
         });
         return;
       }
@@ -597,16 +698,16 @@ export class AuthController {
         return;
       }
 
-      await authService.verifyOTPPasswordReset(email, otpCode, newPassword);
+      await authService.createPasswordWithToken(resetToken, newPassword);
 
       res.json({
         success: true,
-        message: 'Password reset successfully'
+        message: 'Password created successfully'
       });
     } catch (error) {
       res.status(400).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Password reset failed'
+        message: error instanceof Error ? error.message : 'Password creation failed'
       });
     }
   }

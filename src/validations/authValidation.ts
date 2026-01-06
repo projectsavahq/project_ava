@@ -135,9 +135,25 @@ export const authValidationSchemas = {
   verifyOTPPasswordReset: Joi.object({
     email: emailSchema,
     otpCode: otpCodeSchema,
+  }),
+  
+  createPassword: Joi.object({
+    resetToken: tokenSchema,
     newPassword: passwordSchema.required().messages({
       'any.required': 'New password is required',
     }),
+  }),
+  
+  updateProfile: Joi.object({
+    name: nameSchema.optional(),
+    preferences: Joi.object({
+      voicePreference: Joi.string().optional(),
+      language: Joi.string().optional(),
+    }).optional(),
+  }),
+  
+  resendVerification: Joi.object({
+    email: emailSchema,
   }),
 };
 
