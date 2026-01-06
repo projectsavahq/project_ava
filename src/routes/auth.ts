@@ -529,10 +529,10 @@ router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyO
 
 /**
  * @swagger
- * /api/auth/create-password:
+ * /api/auth/set-password:
  *   post:
  *     tags: [Authentication]
- *     summary: Create new password after OTP verification
+ *     summary: Set new password after OTP verification
  *     description: |
  *       Set a new password after OTP verification. Requires the reset token from OTP verification.
  *       Password cannot be one of the last 4 used passwords.
@@ -541,20 +541,20 @@ router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyO
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreatePasswordRequest'
+ *             $ref: '#/components/schemas/SetPasswordRequest'
  *           example:
  *             resetToken: "temp-token-for-password-reset"
  *             newPassword: "newSecurePassword123"
  *     responses:
  *       200:
- *         description: Password created successfully
+ *         description: Password set successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessResponse'
  *             example:
  *               success: true
- *               message: "Password created successfully"
+ *               message: "Password set successfully"
  *       400:
  *         description: Bad request - validation errors
  *         content:
@@ -583,6 +583,6 @@ router.post('/verify-otp-password-reset', validate(authValidationSchemas.verifyO
  *                   success: false
  *                   message: "Cannot reuse recent passwords"
  */
-router.post('/create-password', validate(authValidationSchemas.createPassword), authController.createPassword);
+router.post('/set-password', validate(authValidationSchemas.setPasswordWithToken), authController.setPasswordWithToken);
 
 export default router;

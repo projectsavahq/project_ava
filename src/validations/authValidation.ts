@@ -137,7 +137,7 @@ export const authValidationSchemas = {
     otpCode: otpCodeSchema,
   }),
   
-  createPassword: Joi.object({
+  setPasswordWithToken: Joi.object({
     resetToken: tokenSchema,
     newPassword: passwordSchema.required().messages({
       'any.required': 'New password is required',

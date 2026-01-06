@@ -655,10 +655,10 @@ export class AuthService {
   }
 
   /**
-   * Create password with reset token (after OTP verification)
+   * Set password with reset token (after OTP verification)
    */
-  async createPasswordWithToken(resetToken: string, newPassword: string): Promise<void> {
-    logInfo(`AUTH: Creating password with reset token`);
+  async setPasswordWithToken(resetToken: string, newPassword: string): Promise<void> {
+    logInfo(`AUTH: Setting password with reset token`);
     
     const user = await User.findOne({
       passwordResetToken: resetToken,
@@ -667,7 +667,7 @@ export class AuthService {
 
     if (!user) {
       logAuth.passwordReset('unknown', 'RESET', false);
-      logWarn(`AUTH: Password creation failed - invalid or expired token`);
+      logWarn(`AUTH: Password set failed - invalid or expired token`);
       throw new Error('Invalid or expired reset token');
     }
 
@@ -706,7 +706,7 @@ export class AuthService {
     await user.save();
     
     logAuth.passwordReset(user.email, 'RESET', true);
-    logInfo(`AUTH: Password created successfully: ${user.email}`);
+    logInfo(`AUTH: Password set successfully: ${user.email}`);
   }
 
   /**

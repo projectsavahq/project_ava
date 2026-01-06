@@ -675,10 +675,10 @@ export class AuthController {
   }
 
   /**
-   * POST /auth/create-password
-   * Create new password after OTP verification
+   * POST /auth/set-password
+   * Set new password after OTP verification
    */
-  async createPassword(req: Request, res: Response): Promise<void> {
+  async setPasswordWithToken(req: Request, res: Response): Promise<void> {
     try {
       const { resetToken, newPassword } = req.body;
 
@@ -698,16 +698,16 @@ export class AuthController {
         return;
       }
 
-      await authService.createPasswordWithToken(resetToken, newPassword);
+      await authService.setPasswordWithToken(resetToken, newPassword);
 
       res.json({
         success: true,
-        message: 'Password created successfully'
+        message: 'Password set successfully'
       });
     } catch (error) {
       res.status(400).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Password creation failed'
+        message: error instanceof Error ? error.message : 'Password set failed'
       });
     }
   }
